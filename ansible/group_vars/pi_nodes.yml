@@ -1,0 +1,67 @@
+---
+# Global variables for all Raspberry Pi nodes
+# Override in host_vars/<hostname>.yml for individual Pi customization
+
+# System configuration
+timezone: "Europe/Berlin"
+hostname: "raspberrypi"
+locale: "en_US.UTF-8"
+
+# Packages to install on all nodes
+common_packages:
+  - git
+  - curl
+  - wget
+  - nano
+  - vim
+  - htop
+  - net-tools
+  - build-essential
+  - python3-dev
+  - python3-pip
+
+# SSH Configuration
+ssh_port: 22
+permit_root_login: "no"
+password_authentication: "yes"
+
+# Network Configuration
+network_enabled: true
+network_dhcp: true
+# Static IP (if needed):
+# network_dhcp: false
+# network_static_ip: "192.168.1.100"
+# network_static_netmask: "255.255.255.0"
+# network_static_gateway: "192.168.1.1"
+# network_static_dns: ["8.8.8.8", "8.8.4.4"]
+
+# WiFi Repeater Configuration
+wifi_repeater_enabled: true
+wifi_repeater_ssid: "MyPI-Repeater"
+wifi_repeater_password: "CHANGE_ME"
+wifi_channel: 6 # 1-13 (region dependent)
+wifi_country: "DE"
+wifi_interface_uplink: "wlan0" # Interface connecting to main WiFi
+wifi_interface_repeater: "ap0" # Virtual AP interface served by hostapd
+wifi_virtual_ap_enabled: true
+repeater_ip: "192.168.2.1"
+repeater_dhcp_start: "192.168.2.100"
+repeater_dhcp_end: "192.168.2.150"
+
+# Docker Configuration
+docker_enabled: true
+docker_version: "24.0"
+docker_compose_version: "2.20.0"
+docker_users: ["{{ ansible_user }}"]
+docker_daemon_options:
+  log-driver: "json-file"
+  log-opts:
+    max-size: "10m"
+    max-file: "3"
+docker_compose_project_name: "raspi-services"
+docker_compose_directory: "/srv/docker"
+
+# System Performance
+enable_gpu_memory: false
+gpu_memory_mb: 64
+enable_overclocking: false
