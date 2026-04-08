@@ -1,0 +1,69 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform/terraform.tfvars.example
+
+# Ansible
+*.pyc
+__pycache__/
+.ansible/
+*.vault
+ansible/hosts.ini
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+docker/.env
+docker/.env.local
+
+# Python
+venv/
+env/
+*.egg-info/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+
+# OS
+._*
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# SSH Keys
+*.pem
+*.key
+id_rsa*
+!*.pub
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Credentials
+*secrets*
+*password*
+ansible/group_vars/secrets.yml
+ansible/host_vars/*/secrets.yml
+
+# Misc
+*.tmp
+node_modules/
