@@ -1,0 +1,51 @@
+---
+# Network role - Configure network interfaces, DHCP, static IPs
+# Prerequisite for WiFi repeater role
+
+- name: Install network tools
+  ansible.builtin.apt:
+    name:
+      - network-manager
+      - ifupdown
+      - isc-dhcp-client
+    state: present
+  tags: [network, packages]
+
+- name: Configure DHCP network interface
+  ansible.builtin.template:
+    src: dhcp-interface.j2
+    dest: "/etc/network/interfaces.d/{{ wifi_interface_uplink }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: network_dhcp | default(true) | bool
+  tags: [network, dhcp]
+
+- name: Configure static network interface
+  ansible.builtin.template:
+    src: static-interface.j2
+    dest: "/etc/network/interfaces.d/{{ wifi_interface_uplink }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: not (network_dhcp | default(true) | bool)
+  tags: [network, static]
+
+- name: Verify network connectivity
+  ansible.builtin.wait_for:
+    host: 8.8.8.8
+    port: 53
+    timeout: 5
+    state: started
+  retries: 3
+  delay: 2
+  tags: [network, verify]
+
+- name: Display network configuration
+  ansible.builtin.debug:
+    msg: |
+      Network Configuration:
+      - Uplink interface: {{ wifi_interface_uplink }}
+      - Repeater interface: {{ wifi_interface_repeater }}
+      - DHCP enabled: {{ network_dhcp | default(true) }}
+  tags: [debug, network]

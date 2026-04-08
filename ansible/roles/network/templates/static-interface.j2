@@ -1,0 +1,6 @@
+auto {{ wifi_interface_uplink }}
+iface {{ wifi_interface_uplink }} inet static
+    address {{ network_static_ip }}
+    netmask {{ network_static_netmask }}
+    gateway {{ network_static_gateway }}
+    dns-nameservers {{ network_static_dns | join(' ') }}
