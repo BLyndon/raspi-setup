@@ -1,0 +1,12 @@
+---
+# WiFi Repeater role handlers
+
+- name: Restart hostapd
+  ansible.builtin.systemd:
+    name: hostapd
+    state: restarted
+
+- name: Restart dnsmasq
+  ansible.builtin.systemd:
+    name: dnsmasq
+    state: restarted
