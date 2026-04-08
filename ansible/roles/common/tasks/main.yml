@@ -1,0 +1,83 @@
+---
+# Common role - Base system setup for all Raspberry Pi nodes
+# Tasks: package updates, timezone, hostname, SSH hardening, etc.
+
+- name: Update package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  tags: [packages]
+
+- name: Install common packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+  tags: [packages]
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ hostname }}"
+  notify: Restart networking
+  tags: [hostname]
+
+- name: Configure timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+  tags: [timezone]
+
+- name: Set locale
+  community.general.locale_gen:
+    name: "{{ locale }}"
+    state: present
+  tags: [locale]
+
+- name: Update SSH port (if changed)
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?Port"
+    line: "Port {{ ssh_port }}"
+  notify: Restart SSH
+  tags: [ssh]
+
+- name: Disable SSH root login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin {{ permit_root_login }}"
+  notify: Restart SSH
+  tags: [ssh]
+
+- name: Disable SSH password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication {{ password_authentication }}"
+  notify: Restart SSH
+  tags: [ssh]
+
+- name: Create .ssh directory for remote user
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.ssh"
+    state: directory
+    mode: "0700"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  tags: [ssh]
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: full
+    autoclean: true
+    autoremove: true
+  tags: [update, upgrade]
+
+- name: Display system info
+  ansible.builtin.debug:
+    msg: |
+      System Information:
+      - Hostname: {{ ansible_hostname }}
+      - OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+      - Kernel: {{ ansible_kernel }}
+      - Memory: {{ ansible_memtotal_mb }} MB
+      - CPU Cores: {{ ansible_processor_vcpus }}
+  tags: [debug, info]

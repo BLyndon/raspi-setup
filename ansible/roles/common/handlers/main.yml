@@ -1,0 +1,12 @@
+---
+# Common role handlers - Actions triggered by tasks
+
+- name: Restart networking
+  ansible.builtin.service:
+    name: networking
+    state: restarted
+
+- name: Restart SSH
+  ansible.builtin.service:
+    name: ssh
+    state: restarted
