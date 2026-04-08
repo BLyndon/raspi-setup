@@ -12,6 +12,7 @@ __pycache__/
 .ansible/
 *.vault
 ansible/hosts.ini
+ansible/group_vars/pi_nodes.local.yml
 
 # Docker
 docker-compose.override.yml
