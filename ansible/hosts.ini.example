@@ -1,0 +1,15 @@
+# Raspberry Pi Inventory Example
+# Copy to hosts.ini and update values:
+#   cp hosts.ini.example hosts.ini
+
+[pi_nodes]
+raspi-01 ansible_host=192.168.1.100 ansible_user=pi
+
+[wifi_repeater_nodes]
+raspi-01
+
+[docker_nodes]
+raspi-01
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
