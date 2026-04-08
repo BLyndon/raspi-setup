@@ -1,0 +1,40 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+
+  - repo: https://github.com/ansible/ansible-lint
+    rev: v25.2.1
+    hooks:
+      - id: ansible-lint
+        files: ^ansible/.*\.(yml|yaml)$
+        additional_dependencies:
+          - ansible
+
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.97.3
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+        args:
+          - --hook-config=--retry-once-with-cleanup=true
+
+  - repo: local
+    hooks:
+      - id: ansible-syntax-check
+        name: ansible syntax check
+        entry: bash -c 'cd ansible && ansible-playbook site.yml -i hosts.ini.example --syntax-check'
+        language: system
+        pass_filenames: false
+        files: ^ansible/.*\.(yml|yaml)$
+
+      - id: docker-compose-validate
+        name: docker compose validate
+        entry: bash -c 'docker compose -f docker/docker-compose.yml config >/dev/null'
+        language: system
+        pass_filenames: false
+        files: ^docker/.*\.(yml|yaml)$
