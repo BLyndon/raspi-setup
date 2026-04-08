@@ -1,0 +1,113 @@
+---
+# Docker role - Install Docker and Docker Compose
+
+- name: Install Docker prerequisites
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+  tags: [docker, packages]
+
+- name: Ensure APT keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [docker, repo]
+  check_mode: false
+
+- name: Add Docker repository GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/debian/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [docker, repo]
+  check_mode: false
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb
+      [arch={{ 'arm64' if ansible_architecture in ['aarch64', 'arm64'] else 'armhf' }}
+      signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/debian
+      {{ ansible_distribution_release }} stable
+    state: present
+    filename: docker-ce
+  tags: [docker, repo]
+
+- name: Install Docker Engine
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+    update_cache: true
+  tags: [docker, packages]
+
+- name: Install Docker Compose
+  vars:
+    docker_compose_arch: "{{ 'aarch64' if ansible_architecture in ['aarch64', 'arm64'] else 'armv7' }}"
+  ansible.builtin.get_url:
+    url: "https://github.com/docker/compose/releases/download/v{{ docker_compose_version }}/docker-compose-Linux-{{ docker_compose_arch }}"
+    dest: /usr/local/bin/docker-compose
+    mode: "0755"
+  tags: [docker, docker-compose]
+
+- name: Create docker-compose project directory
+  ansible.builtin.file:
+    path: "{{ docker_compose_directory }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  tags: [docker, directories]
+
+- name: Add users to docker group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: docker
+    append: true
+  loop: "{{ docker_users }}"
+  tags: [docker, users]
+
+- name: Configure Docker daemon
+  ansible.builtin.copy:
+    content: "{{ docker_daemon_options | to_nice_json }}"
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart docker
+  tags: [docker, config]
+
+- name: Enable and start Docker service
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+  tags: [docker, service]
+
+- name: Verify Docker installation
+  ansible.builtin.command: docker --version
+  register: docker_version_output
+  changed_when: false
+  tags: [docker, debug, verify]
+
+- name: Display Docker information
+  ansible.builtin.debug:
+    msg: |
+      Docker installation complete:
+      {{ docker_version_output.stdout }}
+      Docker Compose: v{{ docker_compose_version }}
+      Project directory: {{ docker_compose_directory }}
+  tags: [debug, docker]
