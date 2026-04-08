@@ -1,0 +1,62 @@
+---
+# Main Ansible Playbook for Raspberry Pi Setup
+# Executes all roles in dependency order
+#
+# Usage:
+#   ansible-playbook site.yml -i hosts.ini                      # Run all
+#   ansible-playbook site.yml -i hosts.ini --check               # Dry-run
+#   ansible-playbook site.yml -i hosts.ini --tags docker         # Run specific role
+#   ansible-playbook site.yml -i hosts.ini -l raspi-01           # Run on single host
+#
+
+- name: Configure Raspberry Pi Nodes
+  hosts: pi_nodes
+  gather_facts: true
+  become: true
+  become_method: ansible.builtin.sudo
+  become_user: root
+
+  pre_tasks:
+    - name: Load local group overrides when present
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/group_vars/pi_nodes.local.yml"
+      when: lookup('ansible.builtin.fileglob', playbook_dir ~ '/group_vars/pi_nodes.local.yml', wantlist=True) | length > 0
+      tags: [always]
+
+    - name: Display Raspberry Pi info
+      ansible.builtin.debug:
+        msg: |
+          Configuring: {{ inventory_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Python: {{ ansible_python_version }}
+          Architecture: {{ ansible_architecture }}
+
+  roles:
+    # Core system setup (runs first)
+    - role: common
+      tags: [common, always]
+
+    # Network configuration (prerequisite for WiFi repeater)
+    - role: network
+      tags: [network, wifi]
+      when: "'wifi_repeater_nodes' in group_names"
+
+    # WiFi repeater setup
+    - role: wifi_repeater
+      tags: [wifi, wifi-repeater]
+      when: wifi_repeater_enabled | default(false) | bool
+
+    # Docker installation
+    - role: docker
+      tags: [docker, containers]
+      when: docker_enabled | default(true) | bool
+
+  post_tasks:
+    - name: Final summary
+      ansible.builtin.debug:
+        msg: |
+          ✓ Configuration complete!
+
+          Next steps:
+          - Verify WiFi repeater: systemctl status hostapd
+          - Review logs: journalctl -u hostapd -n 20
