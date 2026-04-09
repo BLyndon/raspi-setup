@@ -35,7 +35,7 @@
 
 - name: Check if repeater interface exists
   ansible.builtin.command: "ip link show {{ wifi_interface_repeater }}"
-  register: repeater_interface_exists
+  register: wifi_repeater_interface_exists
   failed_when: false
   changed_when: false
   tags: [wifi, wifi-repeater, validate]
@@ -45,7 +45,7 @@
   changed_when: true
   when:
     - wifi_virtual_ap_enabled | default(false) | bool
-    - repeater_interface_exists.rc != 0
+    - wifi_repeater_interface_exists.rc != 0
   tags: [wifi, wifi-repeater, network]
 
 - name: Create hostapd configuration
@@ -112,7 +112,7 @@
 
 - name: Check if WiFi interface is up
   ansible.builtin.command: "ip -o link show {{ wifi_interface_repeater }}"
-  register: wifi_interface_status
+  register: wifi_repeater_interface_status
   failed_when: false
   changed_when: false
   tags: [wifi, wifi-repeater, debug]
