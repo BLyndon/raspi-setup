@@ -93,44 +93,157 @@ flowchart LR
 
 ---
 
-## Ansible Responsibility Split
+## Detailed Documentation of Each Component
 
-- **Role `network`**: interface basics, sysctl forwarding.
-- **Role `wifi-repeater`**:
-  - install/configure `hostapd`
-  - install/configure `dnsmasq`
-  - apply NAT/forward rules
-  - enable/start services
-- **Role `docker`**: independent from repeater core (optional services).
+### hostapd
 
----
+What it is:
 
-## Validation Checklist
+- `hostapd` is the service that turns a WiFi adapter into a hotspot.
+- Think of it as the part that says: "My WiFi name is this, my password is this, and devices are allowed to join here."
 
-- `systemctl status hostapd`
-- `systemctl status dnsmasq`
-- `sysctl net.ipv4.ip_forward` should be `1`
-- NAT rule present (`iptables -t nat -S` or `nft list ruleset`)
-- Client can:
-  - get DHCP lease
-  - ping Pi AP IP
-  - resolve DNS
-  - access internet
+What it does in this project:
 
----
+- Broadcasts your repeater SSID (the network name people see).
+- Applies WiFi security (WPA2/WPA3 and passphrase).
+- Accepts and manages WiFi client connections on the AP interface.
 
-## Notes / Caveats
+If `hostapd` is broken, you will see:
 
-- Best reliability usually needs **two radios** (one upstream, one AP).
-- Single-radio AP+client can work but depends on chipset/driver support.
-- Prefer WPA2/WPA3 strong passphrase and non-overlapping channels.
-- Ensure firewall/NAT rules persist across reboot.
+- No repeater SSID visible on phones/laptops.
+- Or SSID is visible but clients cannot join.
+
+Typical settings you choose:
+
+- `ssid`: the name of your repeater network.
+- `wpa_passphrase`: the WiFi password.
+- `channel`: radio channel used by the AP.
 
 ---
 
-## Security Recommendations
+### dnsmasq
 
-- Disable password SSH login if possible; use SSH keys.
-- Keep Pi packages updated.
-- Limit management access to trusted subnet.
-- Store secrets in Ansible Vault (SSID passphrases, keys if sensitive).
+What it is:
+
+- `dnsmasq` is a small network helper service.
+- It usually does two jobs: DHCP (hand out IP addresses) and DNS (translate names like `example.com` into IP addresses).
+
+What it does in this project:
+
+- Gives each connected client an IP in your AP subnet (for example `192.168.50.x`).
+- Tells clients: "Use `192.168.50.1` (the Pi) as your gateway."
+- Optionally forwards DNS queries upstream.
+
+If `dnsmasq` is broken, you will see:
+
+- Client connects to WiFi but says "No internet" or "Self-assigned IP."
+- Client gets no IP address from DHCP.
+
+Typical settings you choose:
+
+- DHCP range, for example `192.168.50.10` to `192.168.50.200`.
+- Subnet/gateway info for AP clients.
+- DNS behavior (forward upstream, local cache, etc.).
+
+---
+
+### Linux IP Forwarding (`net.ipv4.ip_forward`)
+
+What it is:
+
+- A kernel switch that allows the Pi to pass traffic from one interface to another.
+
+Simple analogy:
+
+- Without forwarding, the Pi is like a house with two doors but no hallway.
+- With forwarding enabled, traffic can enter one door (`wlan1`) and leave through the other (`wlan0`).
+
+What it does in this project:
+
+- Allows AP clients to send traffic through the Pi toward the upstream router.
+
+If forwarding is off, you will see:
+
+- Client gets IP address and can reach Pi.
+- But client cannot reach internet sites.
+
+---
+
+### NAT and Firewall Rules (`iptables`/`nftables`)
+
+What it is:
+
+- NAT (Network Address Translation) rewrites client source addresses so upstream network can route replies correctly.
+- Firewall rules decide which traffic is allowed between interfaces.
+
+Simple analogy:
+
+- NAT is like a receptionist at an office front desk.
+- Everyone inside uses internal extension numbers, but the receptionist presents one public number and routes replies back to the right person.
+
+What it does in this project:
+
+- Masquerades traffic leaving `wlan0` so AP clients share Pi's upstream identity.
+- Allows forwarding between AP interface and upstream interface.
+
+If NAT/firewall rules are wrong, you will see:
+
+- Client gets IP and can resolve DNS sometimes.
+- But connections time out or only partial internet works.
+
+---
+
+### Upstream WiFi Client (`wpa_supplicant` / NetworkManager)
+
+What it is:
+
+- This is the part that connects the Pi itself to your home router or upstream WiFi.
+
+What it does in this project:
+
+- Keeps `wlan0` associated to upstream SSID.
+- Gets upstream IP, route, and DNS from your main network.
+
+If upstream client is down, you will see:
+
+- Repeater SSID still exists.
+- Devices can join repeater.
+- But there is no path to the internet because Pi is not connected upstream.
+
+---
+
+## First Checks When It Does Not Work
+
+Run these on the Pi:
+
+```bash
+systemctl status hostapd
+systemctl status dnsmasq
+ip addr show
+ip route
+sysctl net.ipv4.ip_forward
+```
+
+What "good" looks like:
+
+- `hostapd` is active and AP SSID is visible.
+- `dnsmasq` is active and clients get `192.168.50.x` addresses.
+- `net.ipv4.ip_forward = 1`.
+- Pi has upstream connectivity on `wlan0`.
+
+Quick symptom map:
+
+- SSID missing: check `hostapd` and AP interface.
+- Connected but no IP: check `dnsmasq` and DHCP range.
+- Has IP but no internet: check forwarding and NAT/firewall rules.
+
+---
+
+## Mini Glossary
+
+- AP (Access Point): the WiFi network clients join.
+- DHCP: automatic IP address assignment.
+- DNS: translates domain names to IP addresses.
+- Interface: a network adapter name like `wlan0` or `wlan1`.
+- NAT: lets private clients share one upstream identity.
+- Upstream: the network that provides internet access.
