@@ -1,84 +1,41 @@
 # Raspberry Pi Setup
 
-Infrastructure-as-Code for Raspberry Pi using Ansible for host setup and Terraform for app deployment.
+Infrastructure-as-Code for turning a Raspberry Pi into a reproducible home-lab node.
 
-## What it does
+This repository uses Ansible for host setup and Terraform for optional service deployment. It is designed for small, repeatable Raspberry Pi environments where you want setup captured as code instead of manual shell history.
 
-- configures a Raspberry Pi with Ansible
-- optionally sets up WiFi repeater services with hostapd and dnsmasq
-- installs Docker on the Pi
-- keeps local machine-specific values out of Git via `ansible/group_vars/pi_nodes.local.yml`
+## What you get
 
-## Prerequisites
+- repeatable Raspberry Pi provisioning with Ansible
+- optional WiFi repeater setup with `hostapd` and `dnsmasq`
+- Docker installation and base system configuration
+- optional Terraform-based app deployment on top of the host setup
 
-- Raspberry Pi running Debian-based Raspberry Pi OS
-- SSH access to the Pi
-- Ansible installed on your control machine
+## Who this is for
+
+Use this repo if you want to bootstrap or rebuild a Pi without redoing the same machine setup by hand each time.
 
 ## Quick start
-
-From the project root:
 
 ```bash
 cp ansible/hosts.ini.example ansible/hosts.ini
 ansible-galaxy install -r ansible/requirements.yml
 ```
 
-Create `ansible/group_vars/pi_nodes.local.yml` for local overrides, for example:
+Then add your local values in `ansible/group_vars/pi_nodes.local.yml`, update `ansible/hosts.ini`, and run the playbook.
 
-```yaml
-hostname: "your-pi-hostname"
-wifi_repeater_password: "your-secure-password"
-```
+## Documentation
 
-Edit `ansible/hosts.ini` with your Pi address and SSH user.
+The README is intentionally short. Detailed setup and design notes live in the docs:
 
-## Main config files
+- [Deployment guide](docs/DEPLOYMENT.md)
+- [Architecture overview](docs/ARCHITECTURE.md)
+- [WiFi repeater details](docs/WIFI_REPEATER.MD)
 
-- `ansible/group_vars/pi_nodes.yml` - shared defaults committed to Git
-- `ansible/group_vars/pi_nodes.local.yml` - local overrides, gitignored
-- `ansible/hosts.ini` - local inventory, gitignored
-- `ansible/site.yml` - main playbook
-
-## Deploy
-
-Validate:
-
-```bash
-ansible-playbook ansible/site.yml -i ansible/hosts.ini --syntax-check
-ansible-playbook ansible/site.yml -i ansible/hosts.ini --check
-```
-
-Apply:
-
-```bash
-ansible-playbook ansible/site.yml -i ansible/hosts.ini
-```
-
-## What Ansible manages
-
-- common system setup
-- network configuration
-- WiFi repeater setup
-- Docker installation
-
-## Terraform
-
-Terraform is optional and can be used separately for app deployment orchestration. It does not replace the Ansible host setup in this repo.
-
-## Verify on the Pi
-
-```bash
-ssh <user>@<pi-ip>
-systemctl status hostapd --no-pager
-systemctl status dnsmasq --no-pager
-docker --version
-```
-
-## Project layout
+## Repository overview
 
 ```text
-ansible/    playbooks, inventory, roles, variables
+ansible/    host provisioning, roles, variables, inventory
 terraform/  optional deployment orchestration
-docs/       deeper design and deployment notes
+docs/       architecture and operational documentation
 ```
