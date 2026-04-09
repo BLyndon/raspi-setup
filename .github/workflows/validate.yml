@@ -14,9 +14,7 @@ on:
       - "terraform/**"
 
 permissions:
-  actions: read
   contents: read
-  security-events: write
 
 jobs:
   ansible-lint:
@@ -85,32 +83,50 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+      - name: Run Trivy misconfiguration scan
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: "config"
           scan-ref: "."
-          format: "sarif"
-          output: "trivy-results.sarif"
-        continue-on-error: true
+          format: "table"
+          output: "trivy-results.txt"
+          hide-progress: true
+          severity: "HIGH,CRITICAL"
+          exit-code: "1"
 
-      - name: Upload Trivy results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
-        with:
-          sarif_file: "trivy-results.sarif"
+      - name: Publish Trivy results to workflow summary
+        if: always()
+        run: |
+          {
+            echo "### Trivy Misconfiguration Scan"
+            echo ""
+            echo "High and critical findings from repository infrastructure configuration."
+            echo ""
+            echo "<details><summary>Show scan output</summary>"
+            echo ""
+            echo '```text'
+            if [[ -f trivy-results.txt ]]; then
+              cat trivy-results.txt
+            else
+              echo "Trivy did not produce an output file."
+            fi
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   summary:
     name: Validation Summary
     runs-on: ubuntu-latest
-    needs: [ansible-lint, ansible-syntax-check, terraform-validate]
+    needs:
+      [ansible-lint, ansible-syntax-check, terraform-validate, security-scan]
     if: always()
     steps:
       - name: Check results
         run: |
           if [[ "${{ needs.ansible-lint.result }}" == "failure" || \
                 "${{ needs.ansible-syntax-check.result }}" == "failure" || \
-                "${{ needs.terraform-validate.result }}" == "failure" ]]; then
+                "${{ needs.terraform-validate.result }}" == "failure" || \
+                "${{ needs.security-scan.result }}" == "failure" ]]; then
             echo "❌ Some validations failed. Please review the checks above."
             exit 1
           else
