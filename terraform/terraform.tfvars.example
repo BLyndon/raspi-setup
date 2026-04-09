@@ -1,0 +1,20 @@
+# Terraform variable values
+# For sensitive values, prefer environment variables:
+#   export TF_VAR_pi_ssh_key_path="~/.ssh/id_ed25519"
+
+# ── Pi connection ─────────────────────────────────────────────────────────────
+pi_host         = "192.168.1.100" # update to your Pi's actual IP
+pi_ssh_user     = "pi"
+pi_ssh_key_path = "~/.ssh/id_ed25519"
+
+# ── Ollama ────────────────────────────────────────────────────────────────────
+enable_ollama       = true
+ollama_port         = 11434
+ollama_model        = "gemma4:e2b"
+ollama_allowed_cidr = "192.168.1.0/24"
+
+# ── Open WebUI ────────────────────────────────────────────────────────────────
+enable_open_webui    = true
+open_webui_port      = 3000
+ollama_url           = "http://host.docker.internal:11434"
+open_webui_image_tag = "main"
