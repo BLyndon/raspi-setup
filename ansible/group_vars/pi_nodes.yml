@@ -52,6 +52,7 @@ repeater_dhcp_end: "192.168.2.150"
 docker_enabled: true
 docker_version: "24.0"
 docker_compose_version: "2.20.0"
+lazydocker_version: "0.25.0"
 docker_users: ["{{ ansible_user }}"]
 docker_daemon_options:
   log-driver: "json-file"
