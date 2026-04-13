@@ -66,3 +66,32 @@ docker_compose_directory: "/srv/docker"
 enable_gpu_memory: false
 gpu_memory_mb: 64
 enable_overclocking: false
+
+# WireGuard Configuration
+wireguard_enabled: true
+wireguard_interface: "wg0"
+wireguard_listen_port: 51820
+wireguard_addresses:
+  - "10.8.0.1/24"
+wireguard_dns:
+  - "1.1.1.1"
+  - "8.8.8.8"
+wireguard_mtu: 1420
+wireguard_enable_ip_forward: true
+
+# Optional hooks (usually for NAT/forwarding rules)
+wireguard_post_up: ""
+wireguard_post_down: ""
+
+# Optional: leave empty to auto-generate on target host
+wireguard_private_key: ""
+
+# Peer list
+wireguard_peers: []
+# Example peer:
+# wireguard_peers:
+#   - public_key: "BASE64_PUBLIC_KEY"
+#     allowed_ips: ["10.8.0.2/32"]
+#     endpoint: "vpn.example.com:51820"
+#     persistent_keepalive: 25
+#     preshared_key: ""

@@ -1,0 +1,31 @@
+[Interface]
+Address = {{ wireguard_addresses | join(', ') }}
+ListenPort = {{ wireguard_listen_port | default(51820) }}
+PrivateKey = {{ wireguard_private_key_effective }}
+{% if wireguard_dns is defined and wireguard_dns | length > 0 %}
+DNS = {{ wireguard_dns | join(', ') }}
+{% endif %}
+{% if wireguard_mtu is defined %}
+MTU = {{ wireguard_mtu }}
+{% endif %}
+{% if wireguard_post_up is defined and (wireguard_post_up | trim) != '' %}
+PostUp = {{ wireguard_post_up }}
+{% endif %}
+{% if wireguard_post_down is defined and (wireguard_post_down | trim) != '' %}
+PostDown = {{ wireguard_post_down }}
+{% endif %}
+{% for peer in wireguard_peers | default([]) %}
+
+[Peer]
+PublicKey = {{ peer.public_key }}
+{% if peer.preshared_key is defined and (peer.preshared_key | trim) != '' %}
+PresharedKey = {{ peer.preshared_key }}
+{% endif %}
+AllowedIPs = {{ peer.allowed_ips | join(', ') }}
+{% if peer.endpoint is defined and (peer.endpoint | trim) != '' %}
+Endpoint = {{ peer.endpoint }}
+{% endif %}
+{% if peer.persistent_keepalive is defined %}
+PersistentKeepalive = {{ peer.persistent_keepalive }}
+{% endif %}
+{% endfor %}

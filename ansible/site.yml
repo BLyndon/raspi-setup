@@ -51,6 +51,11 @@
       tags: [docker, containers]
       when: docker_enabled | default(true) | bool
 
+    # WireGuard VPN setup
+    - role: wireguard
+      tags: [wireguard, vpn]
+      when: wireguard_enabled | default(false) | bool
+
   post_tasks:
     - name: Final summary
       ansible.builtin.debug:

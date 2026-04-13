@@ -8,6 +8,7 @@ This repository uses Ansible for host setup and Terraform for optional service d
 
 - repeatable Raspberry Pi provisioning with Ansible
 - optional WiFi repeater setup with `hostapd` and `dnsmasq`
+- optional WireGuard VPN endpoint setup
 - Docker installation and base system configuration
 - optional Terraform-based app deployment on top of the host setup
 
@@ -31,6 +32,8 @@ The README is intentionally short. Detailed setup and design notes live in the d
 - [Deployment guide](docs/DEPLOYMENT.md)
 - [Architecture overview](docs/ARCHITECTURE.md)
 - [WiFi repeater details](docs/WIFI_REPEATER.MD)
+- [WireGuard setup](docs/WIREGUARD.md)
+- [Dynamic DNS with DuckDNS](docs/DYNAMIC_DNS.md)
 
 ## Repository overview
 
