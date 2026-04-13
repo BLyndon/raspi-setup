@@ -30,6 +30,7 @@
           OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
           Python: {{ ansible_python_version }}
           Architecture: {{ ansible_architecture }}
+      when: debug_enabled | default(false) | bool
 
   roles:
     # Core system setup (runs first)

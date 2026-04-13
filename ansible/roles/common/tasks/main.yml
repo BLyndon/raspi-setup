@@ -80,4 +80,5 @@
       - Kernel: {{ ansible_facts['kernel'] }}
       - Memory: {{ ansible_facts['memtotal_mb'] }} MB
       - CPU Cores: {{ ansible_facts['processor_vcpus'] }}
+  when: debug_enabled | default(false) | bool
   tags: [debug, info]

@@ -6,6 +6,8 @@
   ansible.builtin.assert:
     that:
       - wifi_interface_uplink != wifi_interface_repeater
+      - wifi_repeater_password != 'CHANGE_ME'
+      - (wifi_repeater_password | length) >= 12
     fail_msg: >-
       wifi_interface_uplink ({{ wifi_interface_uplink }}) and
       wifi_interface_repeater ({{ wifi_interface_repeater }}) must be different.
@@ -115,6 +117,7 @@
   register: wifi_repeater_interface_status
   failed_when: false
   changed_when: false
+  when: debug_enabled | default(false) | bool
   tags: [wifi, wifi-repeater, debug]
 
 - name: Configure repeater interface runtime IP
@@ -171,4 +174,5 @@
         sudo systemctl status hostapd
         sudo systemctl status dnsmasq
         sudo hostapd_cli status
+  when: debug_enabled | default(false) | bool
   tags: [debug, wifi, wifi-repeater]

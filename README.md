@@ -34,6 +34,7 @@ The README is intentionally short. Detailed setup and design notes live in the d
 - [WiFi repeater details](docs/WIFI_REPEATER.MD)
 - [WireGuard setup](docs/WIREGUARD.md)
 - [Dynamic DNS with DuckDNS](docs/DYNAMIC_DNS.md)
+- [SSH known_hosts guide](docs/KNOWN_HOSTS.md)
 
 ## Repository overview
 

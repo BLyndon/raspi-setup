@@ -110,6 +110,48 @@
   when: wireguard_enable_ip_forward | default(true) | bool
   tags: [wireguard, network]
 
+- name: Allow WireGuard UDP port on INPUT
+  ansible.builtin.shell: |
+    iptables -C INPUT -p udp --dport {{ wireguard_listen_port | default(51820) }} -j ACCEPT || \
+    iptables -A INPUT -p udp --dport {{ wireguard_listen_port | default(51820) }} -j ACCEPT
+  changed_when: false
+  when:
+    - wireguard_manage_firewall | default(true) | bool
+    - not ansible_check_mode
+  tags: [wireguard, firewall]
+
+- name: Allow inbound traffic on WireGuard interface
+  ansible.builtin.shell: |
+    iptables -C INPUT -i {{ wireguard_interface | default('wg0') }} -j ACCEPT || \
+    iptables -A INPUT -i {{ wireguard_interface | default('wg0') }} -j ACCEPT
+  changed_when: false
+  when:
+    - wireguard_manage_firewall | default(true) | bool
+    - not ansible_check_mode
+  tags: [wireguard, firewall]
+
+- name: Allow forwarding from WireGuard interface
+  ansible.builtin.shell: |
+    iptables -C FORWARD -i {{ wireguard_interface | default('wg0') }} -j ACCEPT || \
+    iptables -A FORWARD -i {{ wireguard_interface | default('wg0') }} -j ACCEPT
+  changed_when: false
+  when:
+    - wireguard_manage_firewall | default(true) | bool
+    - wireguard_firewall_allow_forward | default(true) | bool
+    - not ansible_check_mode
+  tags: [wireguard, firewall]
+
+- name: Allow established forwarding back to WireGuard interface
+  ansible.builtin.shell: |
+    iptables -C FORWARD -o {{ wireguard_interface | default('wg0') }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT || \
+    iptables -A FORWARD -o {{ wireguard_interface | default('wg0') }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+  changed_when: false
+  when:
+    - wireguard_manage_firewall | default(true) | bool
+    - wireguard_firewall_allow_forward | default(true) | bool
+    - not ansible_check_mode
+  tags: [wireguard, firewall]
+
 - name: Enable and start WireGuard interface
   ansible.builtin.systemd:
     name: "wg-quick@{{ wireguard_interface | default('wg0') }}"
@@ -132,7 +174,9 @@
   register: wireguard_show_output
   changed_when: false
   failed_when: false
-  when: not ansible_check_mode
+  when:
+    - not ansible_check_mode
+    - debug_enabled | default(false) | bool
   tags: [wireguard, verify, debug]
 
 - name: Display WireGuard summary
@@ -148,7 +192,9 @@
       Status output:
       {{ wireguard_show_output.stdout }}
       {% endif %}
-  when: not ansible_check_mode
+  when:
+    - not ansible_check_mode
+    - debug_enabled | default(false) | bool
   tags: [wireguard, debug]
 
 # --- DuckDNS dynamic DNS updater ---
