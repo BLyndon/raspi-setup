@@ -27,48 +27,39 @@ simple API and good community support.
 
 ---
 
-## 2) Set up the IP updater on the Pi
+## 2) Configure and deploy via Ansible
 
-SSH into the Pi and run:
+The WireGuard role handles script deployment and cron scheduling automatically.
+Set these variables in `ansible/group_vars/pi_nodes.local.yml` (keep the token out
+of version control):
 
-```bash
-mkdir -p ~/duckdns
-
-cat > ~/duckdns/duck.sh << 'EOF'
-#!/bin/bash
-DOMAIN="mypi"
-TOKEN="your-duckdns-token"
-echo url="https://www.duckdns.org/update?domains=${DOMAIN}&token=${TOKEN}&ip=" \
-  | curl -k -o ~/duckdns/duck.log -K -
-EOF
-
-chmod +x ~/duckdns/duck.sh
+```yaml
+duckdns_enabled: true
+duckdns_domain: "mypi"              # subdomain only, not mypi.duckdns.org
+duckdns_token: "your-duckdns-token" # from duckdns.org dashboard
 ```
 
-Test it immediately:
+Then run the wireguard role:
 
 ```bash
-~/duckdns/duck.sh
-cat ~/duckdns/duck.log   # should print: OK
+ansible-playbook ansible/site.yml -i ansible/hosts.ini --tags wireguard
+```
+
+Ansible will:
+
+- Deploy `/opt/duckdns/duck.sh` from the `duck.sh.j2` template.
+- Install a cron job that runs the script every 5 minutes as root.
+- Execute the script immediately on first deploy.
+
+To verify on the Pi:
+
+```bash
+cat /opt/duckdns/duck.log   # should print: OK
 ```
 
 ---
 
-## 3) Schedule automatic updates with cron
-
-```bash
-crontab -e
-```
-
-Add this line to update every 5 minutes:
-
-```cron
-*/5 * * * * ~/duckdns/duck.sh >/dev/null 2>&1
-```
-
----
-
-## 4) Update your WireGuard client config
+## 3) Update your WireGuard client config
 
 On each peer device, change the `Endpoint` in the client config from the raw IP to
 your DuckDNS hostname:
@@ -86,7 +77,7 @@ the IP changes.
 
 ---
 
-## 5) Router port forwarding
+## 4) Router port forwarding
 
 For WireGuard to be reachable from the internet, forward the WireGuard port on your
 router to the Pi's LAN IP:
@@ -103,7 +94,7 @@ ip -4 addr show eth0 | grep inet
 
 ---
 
-## 6) Verify DNS propagation
+## 5) Verify DNS propagation
 
 From any external machine (or your phone on mobile data, not home WiFi):
 

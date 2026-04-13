@@ -150,3 +150,43 @@
       {% endif %}
   when: not ansible_check_mode
   tags: [wireguard, debug]
+
+# --- DuckDNS dynamic DNS updater ---
+
+- name: Ensure DuckDNS script directory exists
+  ansible.builtin.file:
+    path: "{{ duckdns_script_dir | default('/opt/duckdns') }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: duckdns_enabled | default(false) | bool
+  tags: [wireguard, duckdns]
+
+- name: Deploy DuckDNS updater script
+  ansible.builtin.template:
+    src: duck.sh.j2
+    dest: "{{ duckdns_script_dir | default('/opt/duckdns') }}/duck.sh"
+    owner: root
+    group: root
+    mode: "0750"
+  when: duckdns_enabled | default(false) | bool
+  tags: [wireguard, duckdns]
+
+- name: Schedule DuckDNS updater via cron
+  ansible.builtin.cron:
+    name: duckdns-updater
+    minute: "*/5"
+    job: "{{ duckdns_script_dir | default('/opt/duckdns') }}/duck.sh >/dev/null 2>&1"
+    user: root
+    state: present
+  when: duckdns_enabled | default(false) | bool
+  tags: [wireguard, duckdns]
+
+- name: Run DuckDNS updater immediately after deploy
+  ansible.builtin.command: "{{ duckdns_script_dir | default('/opt/duckdns') }}/duck.sh"
+  changed_when: false
+  when:
+    - duckdns_enabled | default(false) | bool
+    - not ansible_check_mode
+  tags: [wireguard, duckdns]

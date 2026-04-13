@@ -95,3 +95,9 @@ wireguard_peers: []
 #     endpoint: "vpn.example.com:51820"
 #     persistent_keepalive: 25
 #     preshared_key: ""
+
+# DuckDNS dynamic DNS updater (used by wireguard role)
+duckdns_enabled: false
+duckdns_domain: "" # subdomain only, e.g. mypi (not mypi.duckdns.org)
+duckdns_token: "" # from duckdns.org — store in pi_nodes.local.yml or Vault
+duckdns_script_dir: "/opt/duckdns"

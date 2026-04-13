@@ -1,0 +1,8 @@
+#!/bin/bash
+# DuckDNS IP updater — managed by Ansible (wireguard role)
+DOMAIN="{{ duckdns_domain }}"
+TOKEN="{{ duckdns_token }}"
+LOG="{{ duckdns_script_dir }}/duck.log"
+
+echo url="https://www.duckdns.org/update?domains=${DOMAIN}&token=${TOKEN}&ip=" \
+  | curl -s -k -o "${LOG}" -K -
