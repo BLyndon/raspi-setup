@@ -1,0 +1,12 @@
+- name: Allow established/related traffic back to WireGuard interface
+  ansible.builtin.iptables:
+    chain: FORWARD
+    out_interface: "{{ wireguard_interface | default('wg0') }}"
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    state: present
+  when:
+    - wireguard_manage_firewall | default(true) | bool
+    - wireguard_firewall_allow_forward | default(true) | bool
+    - not ansible_check_mode
+  tags: [wireguard, firewall]

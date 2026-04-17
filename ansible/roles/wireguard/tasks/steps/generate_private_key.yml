@@ -1,0 +1,9 @@
+- name: Generate WireGuard private key when missing and not provided
+  ansible.builtin.command: wg genkey
+  register: wireguard_private_key_generated
+  changed_when: true
+  no_log: true
+  when:
+    - (wireguard_private_key | default('')) | length == 0
+    - not wireguard_private_key_file.stat.exists
+  tags: [wireguard, keys]

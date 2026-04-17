@@ -1,0 +1,8 @@
+- name: Restart WireGuard interface when config changed
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ wireguard_interface | default('wg0') }}"
+    state: restarted
+  when:
+    - not ansible_check_mode
+    - wireguard_config_result is changed
+  tags: [wireguard, service]

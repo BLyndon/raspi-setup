@@ -1,0 +1,7 @@
+- name: Run DuckDNS updater immediately after deploy
+  ansible.builtin.command: "{{ duckdns_script_dir | default('/opt/duckdns') }}/duck.sh"
+  changed_when: false
+  when:
+    - duckdns_enabled | default(false) | bool
+    - not ansible_check_mode
+  tags: [wireguard, duckdns]

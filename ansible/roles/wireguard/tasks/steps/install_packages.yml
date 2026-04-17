@@ -1,0 +1,8 @@
+- name: Install WireGuard packages
+  ansible.builtin.apt:
+    name:
+      - wireguard
+      - wireguard-tools
+    state: present
+    update_cache: true
+  tags: [wireguard, packages]

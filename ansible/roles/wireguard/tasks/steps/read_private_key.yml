@@ -1,0 +1,7 @@
+- name: Read WireGuard private key from file when not provided
+  ansible.builtin.slurp:
+    path: "/etc/wireguard/{{ wireguard_interface | default('wg0') }}.key"
+  register: wireguard_private_key_file_content
+  no_log: true
+  when: (wireguard_private_key | default('')) | length == 0
+  tags: [wireguard, keys]

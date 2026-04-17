@@ -1,0 +1,10 @@
+- name: Set effective WireGuard private key
+  ansible.builtin.set_fact:
+    wireguard_private_key_effective: >-
+      {{
+        wireguard_private_key
+        if (wireguard_private_key | default('')) | length > 0
+        else (wireguard_private_key_file_content.content | b64decode | trim)
+      }}
+  no_log: true
+  tags: [wireguard, keys]

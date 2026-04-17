@@ -1,0 +1,8 @@
+- name: Derive WireGuard public key from effective private key
+  ansible.builtin.command: wg pubkey
+  args:
+    stdin: "{{ wireguard_private_key_effective }}"
+  register: wireguard_public_key_output
+  changed_when: false
+  no_log: true
+  tags: [wireguard, keys]

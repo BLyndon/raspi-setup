@@ -1,0 +1,11 @@
+- name: Allow WireGuard UDP port on INPUT
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: udp
+    destination_port: "{{ wireguard_listen_port | default(51820) }}"
+    jump: ACCEPT
+    state: present
+  when:
+    - wireguard_manage_firewall | default(true) | bool
+    - not ansible_check_mode
+  tags: [wireguard, firewall]

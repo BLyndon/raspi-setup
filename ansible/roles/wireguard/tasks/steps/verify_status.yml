@@ -1,0 +1,9 @@
+- name: Verify WireGuard interface status
+  ansible.builtin.command: "wg show {{ wireguard_interface | default('wg0') }}"
+  register: wireguard_show_output
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - debug_enabled | default(false) | bool
+  tags: [wireguard, verify, debug]

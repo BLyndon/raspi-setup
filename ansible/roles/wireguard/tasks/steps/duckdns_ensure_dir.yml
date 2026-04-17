@@ -1,0 +1,9 @@
+- name: Ensure DuckDNS script directory exists
+  ansible.builtin.file:
+    path: "{{ duckdns_script_dir | default('/opt/duckdns') }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: duckdns_enabled | default(false) | bool
+  tags: [wireguard, duckdns]

@@ -1,0 +1,10 @@
+- name: Configure WireGuard interface
+  ansible.builtin.template:
+    src: wg.conf.j2
+    dest: "/etc/wireguard/{{ wireguard_interface | default('wg0') }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  register: wireguard_config_result
+  no_log: true
+  tags: [wireguard, config]

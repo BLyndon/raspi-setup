@@ -1,0 +1,17 @@
+- name: Display WireGuard summary
+  ansible.builtin.debug:
+    msg: |
+      WireGuard configuration complete:
+      - Interface: {{ wireguard_interface | default('wg0') }}
+      - Listen port: {{ wireguard_listen_port | default(51820) }}
+      - Addresses: {{ wireguard_addresses | join(', ') }}
+      - Public key: {{ wireguard_public_key_output.stdout }}
+      {% if wireguard_show_output is defined and wireguard_show_output.stdout is defined %}
+
+      Status output:
+      {{ wireguard_show_output.stdout }}
+      {% endif %}
+  when:
+    - not ansible_check_mode
+    - debug_enabled | default(false) | bool
+  tags: [wireguard, debug]

@@ -1,0 +1,14 @@
+- name: Persist generated WireGuard private key
+  ansible.builtin.copy:
+    dest: "/etc/wireguard/{{ wireguard_interface | default('wg0') }}.key"
+    content: "{{ wireguard_private_key_generated.stdout }}\n"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when:
+    - (wireguard_private_key | default('')) | length == 0
+    - wireguard_private_key_generated is defined
+    - wireguard_private_key_generated.stdout is defined
+    - (wireguard_private_key_generated.stdout | trim) != ''
+  tags: [wireguard, keys]

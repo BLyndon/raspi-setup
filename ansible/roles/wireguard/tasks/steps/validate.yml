@@ -1,0 +1,10 @@
+- name: Validate WireGuard configuration
+  ansible.builtin.assert:
+    that:
+      - wireguard_addresses is defined
+      - wireguard_addresses | length > 0
+    fail_msg: >-
+      wireguard_addresses must be defined and contain at least one CIDR,
+      for example ['10.8.0.1/24'].
+    success_msg: WireGuard configuration looks valid.
+  tags: [wireguard, validate]

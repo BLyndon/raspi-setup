@@ -1,238 +1,75 @@
 ---
-# WireGuard role - Install and configure a WireGuard interface
+
+
+# WireGuard role - Install and configure a WireGuard interface (refactored)
 
 - name: Validate WireGuard configuration
-  ansible.builtin.assert:
-    that:
-      - wireguard_addresses is defined
-      - wireguard_addresses | length > 0
-    fail_msg: >-
-      wireguard_addresses must be defined and contain at least one CIDR,
-      for example ['10.8.0.1/24'].
-    success_msg: WireGuard configuration looks valid.
-  tags: [wireguard, validate]
+  ansible.builtin.import_tasks: steps/validate.yml
 
 - name: Install WireGuard packages
-  ansible.builtin.apt:
-    name:
-      - wireguard
-      - wireguard-tools
-    state: present
-    update_cache: true
-  tags: [wireguard, packages]
+  ansible.builtin.import_tasks: steps/install_packages.yml
 
 - name: Ensure WireGuard config directory exists
-  ansible.builtin.file:
-    path: /etc/wireguard
-    state: directory
-    owner: root
-    group: root
-    mode: "0700"
-  tags: [wireguard, config]
+  ansible.builtin.import_tasks: steps/ensure_config_dir.yml
 
-- name: Check existing WireGuard private key file
-  ansible.builtin.stat:
-    path: "/etc/wireguard/{{ wireguard_interface | default('wg0') }}.key"
-  register: wireguard_private_key_file
-  when: (wireguard_private_key | default('')) | length == 0
-  tags: [wireguard, keys]
+- name: Check for existing private key file
+  ansible.builtin.import_tasks: steps/check_private_key_file.yml
 
-- name: Generate WireGuard private key when missing and not provided
-  ansible.builtin.command: wg genkey
-  register: wireguard_private_key_generated
-  changed_when: true
-  no_log: true
-  when:
-    - (wireguard_private_key | default('')) | length == 0
-    - not wireguard_private_key_file.stat.exists
-  tags: [wireguard, keys]
+- name: Generate WireGuard private key
+  ansible.builtin.import_tasks: steps/generate_private_key.yml
 
-- name: Persist generated WireGuard private key
-  ansible.builtin.copy:
-    dest: "/etc/wireguard/{{ wireguard_interface | default('wg0') }}.key"
-    content: "{{ wireguard_private_key_generated.stdout }}\n"
-    owner: root
-    group: root
-    mode: "0600"
-  no_log: true
-  when:
-    - (wireguard_private_key | default('')) | length == 0
-    - wireguard_private_key_generated is defined
-    - wireguard_private_key_generated.stdout is defined
-    - (wireguard_private_key_generated.stdout | trim) != ''
-  tags: [wireguard, keys]
+- name: Persist WireGuard private key
+  ansible.builtin.import_tasks: steps/persist_private_key.yml
 
-- name: Read WireGuard private key from file when not provided
-  ansible.builtin.slurp:
-    path: "/etc/wireguard/{{ wireguard_interface | default('wg0') }}.key"
-  register: wireguard_private_key_file_content
-  no_log: true
-  when: (wireguard_private_key | default('')) | length == 0
-  tags: [wireguard, keys]
+- name: Read WireGuard private key
+  ansible.builtin.import_tasks: steps/read_private_key.yml
 
 - name: Set effective WireGuard private key
-  ansible.builtin.set_fact:
-    wireguard_private_key_effective: >-
-      {{
-        wireguard_private_key
-        if (wireguard_private_key | default('')) | length > 0
-        else (wireguard_private_key_file_content.content | b64decode | trim)
-      }}
-  no_log: true
-  tags: [wireguard, keys]
+  ansible.builtin.import_tasks: steps/set_effective_private_key.yml
 
-- name: Derive WireGuard public key from effective private key
-  ansible.builtin.command: wg pubkey
-  args:
-    stdin: "{{ wireguard_private_key_effective }}"
-  register: wireguard_public_key_output
-  changed_when: false
-  no_log: true
-  tags: [wireguard, keys]
+- name: Derive WireGuard public key
+  ansible.builtin.import_tasks: steps/derive_public_key.yml
 
 - name: Configure WireGuard interface
-  ansible.builtin.template:
-    src: wg.conf.j2
-    dest: "/etc/wireguard/{{ wireguard_interface | default('wg0') }}.conf"
-    owner: root
-    group: root
-    mode: "0600"
-  register: wireguard_config_result
-  no_log: true
-  tags: [wireguard, config]
+  ansible.builtin.import_tasks: steps/configure_interface.yml
 
-- name: Enable IPv4 forwarding for WireGuard routing
-  ansible.posix.sysctl:
-    name: net.ipv4.ip_forward
-    value: "1"
-    sysctl_set: true
-    state: present
-  when: wireguard_enable_ip_forward | default(true) | bool
-  tags: [wireguard, network]
+- name: Enable IPv4 forwarding
+  ansible.builtin.import_tasks: steps/enable_ipv4_forwarding.yml
 
-- name: Allow WireGuard UDP port on INPUT
-  ansible.builtin.shell: |
-    iptables -C INPUT -p udp --dport {{ wireguard_listen_port | default(51820) }} -j ACCEPT || \
-    iptables -A INPUT -p udp --dport {{ wireguard_listen_port | default(51820) }} -j ACCEPT
-  changed_when: false
-  when:
-    - wireguard_manage_firewall | default(true) | bool
-    - not ansible_check_mode
-  tags: [wireguard, firewall]
+- name: Allow UDP port for WireGuard
+  ansible.builtin.import_tasks: steps/allow_udp_port.yml
 
-- name: Allow inbound traffic on WireGuard interface
-  ansible.builtin.shell: |
-    iptables -C INPUT -i {{ wireguard_interface | default('wg0') }} -j ACCEPT || \
-    iptables -A INPUT -i {{ wireguard_interface | default('wg0') }} -j ACCEPT
-  changed_when: false
-  when:
-    - wireguard_manage_firewall | default(true) | bool
-    - not ansible_check_mode
-  tags: [wireguard, firewall]
+- name: Allow inbound WireGuard interface
+  ansible.builtin.import_tasks: steps/allow_inbound_interface.yml
 
-- name: Allow forwarding from WireGuard interface
-  ansible.builtin.shell: |
-    iptables -C FORWARD -i {{ wireguard_interface | default('wg0') }} -j ACCEPT || \
-    iptables -A FORWARD -i {{ wireguard_interface | default('wg0') }} -j ACCEPT
-  changed_when: false
-  when:
-    - wireguard_manage_firewall | default(true) | bool
-    - wireguard_firewall_allow_forward | default(true) | bool
-    - not ansible_check_mode
-  tags: [wireguard, firewall]
+- name: Allow forwarding for WireGuard
+  ansible.builtin.import_tasks: steps/allow_forwarding.yml
 
-- name: Allow established forwarding back to WireGuard interface
-  ansible.builtin.shell: |
-    iptables -C FORWARD -o {{ wireguard_interface | default('wg0') }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT || \
-    iptables -A FORWARD -o {{ wireguard_interface | default('wg0') }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-  changed_when: false
-  when:
-    - wireguard_manage_firewall | default(true) | bool
-    - wireguard_firewall_allow_forward | default(true) | bool
-    - not ansible_check_mode
-  tags: [wireguard, firewall]
+- name: Allow established forwarding for WireGuard
+  ansible.builtin.import_tasks: steps/allow_established_forwarding.yml
 
 - name: Enable and start WireGuard interface
-  ansible.builtin.systemd:
-    name: "wg-quick@{{ wireguard_interface | default('wg0') }}"
-    enabled: true
-    state: started
-  when: not ansible_check_mode
-  tags: [wireguard, service]
+  ansible.builtin.import_tasks: steps/enable_start_interface.yml
 
-- name: Restart WireGuard interface when config changed
-  ansible.builtin.systemd:
-    name: "wg-quick@{{ wireguard_interface | default('wg0') }}"
-    state: restarted
-  when:
-    - not ansible_check_mode
-    - wireguard_config_result is changed
-  tags: [wireguard, service]
+- name: Restart WireGuard interface
+  ansible.builtin.import_tasks: steps/restart_interface.yml
 
-- name: Verify WireGuard interface status
-  ansible.builtin.command: "wg show {{ wireguard_interface | default('wg0') }}"
-  register: wireguard_show_output
-  changed_when: false
-  failed_when: false
-  when:
-    - not ansible_check_mode
-    - debug_enabled | default(false) | bool
-  tags: [wireguard, verify, debug]
+- name: Verify WireGuard status
+  ansible.builtin.import_tasks: steps/verify_status.yml
 
 - name: Display WireGuard summary
-  ansible.builtin.debug:
-    msg: |
-      WireGuard configuration complete:
-      - Interface: {{ wireguard_interface | default('wg0') }}
-      - Listen port: {{ wireguard_listen_port | default(51820) }}
-      - Addresses: {{ wireguard_addresses | join(', ') }}
-      - Public key: {{ wireguard_public_key_output.stdout }}
-      {% if wireguard_show_output is defined and wireguard_show_output.stdout is defined %}
-
-      Status output:
-      {{ wireguard_show_output.stdout }}
-      {% endif %}
-  when:
-    - not ansible_check_mode
-    - debug_enabled | default(false) | bool
-  tags: [wireguard, debug]
+  ansible.builtin.import_tasks: steps/display_summary.yml
 
 # --- DuckDNS dynamic DNS updater ---
 
-- name: Ensure DuckDNS script directory exists
-  ansible.builtin.file:
-    path: "{{ duckdns_script_dir | default('/opt/duckdns') }}"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
-  when: duckdns_enabled | default(false) | bool
-  tags: [wireguard, duckdns]
+- name: Ensure DuckDNS directory exists
+  ansible.builtin.import_tasks: steps/duckdns_ensure_dir.yml
 
-- name: Deploy DuckDNS updater script
-  ansible.builtin.template:
-    src: duck.sh.j2
-    dest: "{{ duckdns_script_dir | default('/opt/duckdns') }}/duck.sh"
-    owner: root
-    group: root
-    mode: "0750"
-  when: duckdns_enabled | default(false) | bool
-  tags: [wireguard, duckdns]
+- name: Deploy DuckDNS update script
+  ansible.builtin.import_tasks: steps/duckdns_deploy_script.yml
 
-- name: Schedule DuckDNS updater via cron
-  ansible.builtin.cron:
-    name: duckdns-updater
-    minute: "*/5"
-    job: "{{ duckdns_script_dir | default('/opt/duckdns') }}/duck.sh >/dev/null 2>&1"
-    user: root
-    state: present
-  when: duckdns_enabled | default(false) | bool
-  tags: [wireguard, duckdns]
+- name: Schedule DuckDNS updater cron job
+  ansible.builtin.import_tasks: steps/duckdns_schedule_cron.yml
 
-- name: Run DuckDNS updater immediately after deploy
-  ansible.builtin.command: "{{ duckdns_script_dir | default('/opt/duckdns') }}/duck.sh"
-  changed_when: false
-  when:
-    - duckdns_enabled | default(false) | bool
-    - not ansible_check_mode
-  tags: [wireguard, duckdns]
+- name: Run DuckDNS updater now
+  ansible.builtin.import_tasks: steps/duckdns_run_now.yml

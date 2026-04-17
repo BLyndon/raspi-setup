@@ -1,0 +1,9 @@
+- name: Schedule DuckDNS updater via cron
+  ansible.builtin.cron:
+    name: duckdns-updater
+    minute: "*/5"
+    job: "{{ duckdns_script_dir | default('/opt/duckdns') }}/duck.sh >/dev/null 2>&1"
+    user: root
+    state: present
+  when: duckdns_enabled | default(false) | bool
+  tags: [wireguard, duckdns]
