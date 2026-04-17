@@ -1,4 +1,3 @@
----
 # WiFi Repeater role - Configure hostapd and dnsmasq for WiFi repeating
 # Prerequisites: network role (for network configuration)
 #
@@ -9,254 +8,25 @@
 # - Adds interface health check
 
 - name: Validate repeater interface configuration
-  ansible.builtin.assert:
-    that:
-      - wifi_interface_uplink != wifi_interface_repeater
-      - wifi_repeater_password != 'CHANGE_ME'
-      - (wifi_repeater_password | length) >= 12
-    fail_msg: >-
-      wifi_interface_uplink ({{ wifi_interface_uplink }}) and
-      wifi_interface_repeater ({{ wifi_interface_repeater }}) must be different.
-      Use two network interfaces (for example uplink=wlan0 and repeater=wlan1, or uplink=eth0 and repeater=wlan0).
-    success_msg: Repeater interface configuration looks valid.
-  tags: [wifi, wifi-repeater, validate]
+  ansible.builtin.import_tasks: steps/validate.yml
 
 - name: Install WiFi repeater dependencies
-  ansible.builtin.apt:
-    name:
-      - hostapd
-      - dnsmasq
-      - bridge-utils
-      - wavemon
-      - rfkill
-    state: present
-  tags: [wifi, wifi-repeater, packages]
+  ansible.builtin.import_tasks: steps/packages.yml
 
-- name: Install iptables-persistent for rule persistence
-  ansible.builtin.apt:
-    name:
-      - iptables-persistent
-    state: present
-  tags: [wifi, wifi-repeater, firewall, persistence]
+- name: Interface setup
+  ansible.builtin.import_tasks: steps/interface.yml
 
-- name: Install nl80211 driver support
-  ansible.builtin.apt:
-    name:
-      - iw
-      - wireless-tools
-      - wpasupplicant
-    state: present
-  tags: [wifi, wifi-repeater, packages]
+- name: Configuration files
+  ansible.builtin.import_tasks: steps/config.yml
 
-- name: Check if repeater interface exists
-  ansible.builtin.command: "ip link show {{ wifi_interface_repeater }}"
-  register: wifi_repeater_interface_exists
-  failed_when: false
-  changed_when: false
-  tags: [wifi, wifi-repeater, validate]
+- name: Firewall and forwarding
+  ansible.builtin.import_tasks: steps/firewall.yml
 
-- name: Create virtual repeater interface
-  ansible.builtin.command: "iw dev {{ wifi_interface_uplink }} interface add {{ wifi_interface_repeater }} type __ap"
-  changed_when: true
-  when:
-    - wifi_virtual_ap_enabled | default(false) | bool
-    - wifi_repeater_interface_exists.rc != 0
-  tags: [wifi, wifi-repeater, network]
+- name: Interface runtime setup
+  ansible.builtin.import_tasks: steps/interface_runtime.yml
 
-- name: Create hostapd configuration
-  ansible.builtin.template:
-    src: hostapd.conf.j2
-    dest: /etc/hostapd/hostapd.conf
-    owner: root
-    group: root
-    mode: "0600"
-  notify: Restart hostapd
-  tags: [wifi, wifi-repeater, config]
+- name: Service management
+  ansible.builtin.import_tasks: steps/services.yml
 
-- name: Configure hostapd daemon file
-  ansible.builtin.lineinfile:
-    path: /etc/default/hostapd
-    regexp: "^#?DAEMON_CONF"
-    line: 'DAEMON_CONF="/etc/hostapd/hostapd.conf"'
-    create: true
-    mode: "0644"
-  notify: Restart hostapd
-  tags: [wifi, wifi-repeater, config]
-
-- name: Create dnsmasq configuration for WiFi repeater
-  ansible.builtin.template:
-    src: dnsmasq.conf.j2
-    dest: /etc/dnsmasq.d/wifi-repeater.conf
-    owner: root
-    group: root
-    mode: "0644"
-  notify: Restart dnsmasq
-  tags: [wifi, wifi-repeater, config]
-
-- name: Configure IPv4 forwarding
-  ansible.posix.sysctl:
-    name: net.ipv4.ip_forward
-    value: "1"
-    sysctl_set: true
-    state: present
-  tags: [wifi, wifi-repeater, network]
-
-- name: Configure NAT masquerade for repeater clients
-  ansible.builtin.shell: |
-    iptables -t nat -C POSTROUTING -o {{ wifi_interface_uplink }} -j MASQUERADE || \
-    iptables -t nat -A POSTROUTING -o {{ wifi_interface_uplink }} -j MASQUERADE
-  changed_when: false
-  tags: [wifi, wifi-repeater, firewall]
-  when: not ansible_check_mode
-
-- name: Save iptables rules (persist NAT)
-  ansible.builtin.command: iptables-save
-  register: iptables_rules
-  changed_when: false
-  tags: [wifi, wifi-repeater, firewall, persistence]
-  when: not ansible_check_mode
-
-- name: Persist iptables rules to /etc/iptables/rules.v4
-  ansible.builtin.copy:
-    content: "{{ iptables_rules.stdout }}\n"
-    dest: /etc/iptables/rules.v4
-    owner: root
-    group: root
-    mode: '0600'
-  when: not ansible_check_mode
-  tags: [wifi, wifi-repeater, firewall, persistence]
-
-- name: Allow repeater -> uplink forwarding
-  ansible.builtin.shell: |
-    iptables -C FORWARD -i {{ wifi_interface_repeater }} -o {{ wifi_interface_uplink }} -j ACCEPT || \
-    iptables -A FORWARD -i {{ wifi_interface_repeater }} -o {{ wifi_interface_uplink }} -j ACCEPT
-  changed_when: false
-  tags: [wifi, wifi-repeater, firewall]
-  when: not ansible_check_mode
-
-- name: Allow established uplink -> repeater forwarding
-  ansible.builtin.shell: |
-    iptables -C FORWARD -i {{ wifi_interface_uplink }} -o {{ wifi_interface_repeater }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT || \
-    iptables -A FORWARD -i {{ wifi_interface_uplink }} -o {{ wifi_interface_repeater }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-  changed_when: false
-  tags: [wifi, wifi-repeater, firewall]
-  when: not ansible_check_mode
-
-- name: Check if WiFi interface is up
-  ansible.builtin.command: "ip -o link show {{ wifi_interface_repeater }}"
-  register: wifi_repeater_interface_status
-  failed_when: false
-  changed_when: false
-  when: debug_enabled | default(false) | bool
-  tags: [wifi, wifi-repeater, debug]
-
-- name: Configure repeater interface runtime IP
-  ansible.builtin.shell: |
-    ip link set {{ wifi_interface_repeater }} up
-    ip addr replace {{ repeater_ip }}/24 dev {{ wifi_interface_repeater }}
-  changed_when: false
-  tags: [wifi, wifi-repeater, network]
-  when: not ansible_check_mode
-
-- name: Disable WiFi power management (repeater)
-  ansible.builtin.shell: |
-    iw dev {{ wifi_interface_repeater }} set power_save off || true
-  changed_when: false
-  tags: [wifi, wifi-repeater, power, reliability]
-  when: not ansible_check_mode
-
-- name: Disable WiFi power management (uplink)
-  ansible.builtin.shell: |
-    iw dev {{ wifi_interface_uplink }} set power_save off || true
-  changed_when: false
-  tags: [wifi, wifi-repeater, power, reliability]
-  when: not ansible_check_mode
-
-- name: Ensure repeater interface is up (health check)
-  ansible.builtin.shell: |
-    set -o pipefail
-    ip link show {{ wifi_interface_repeater }} | grep 'state UP' || ip link set {{ wifi_interface_repeater }} up
-  changed_when: false
-  tags: [wifi, wifi-repeater, health, reliability]
-  when: not ansible_check_mode
-
-- name: Unmask hostapd service
-  ansible.builtin.systemd:
-    name: hostapd
-    masked: false
-  tags: [wifi, wifi-repeater, service]
-  when: not ansible_check_mode
-
-- name: Unmask dnsmasq service
-  ansible.builtin.systemd:
-    name: dnsmasq
-    masked: false
-  tags: [wifi, wifi-repeater, service]
-  when: not ansible_check_mode
-
-- name: Enable and start hostapd
-  ansible.builtin.systemd:
-    name: hostapd
-    enabled: true
-    state: started
-  tags: [wifi, wifi-repeater, service]
-  when: not ansible_check_mode
-
-- name: Harden hostapd service (restart on failure)
-  ansible.builtin.blockinfile:
-    path: /etc/systemd/system/hostapd.service.d/override.conf
-    create: true
-    mode: '0644'
-    owner: root
-    group: root
-    block: |
-      [Service]
-      Restart=always
-      RestartSec=5
-  notify: Reload systemd
-  tags: [wifi, wifi-repeater, service, hardening]
-  when: not ansible_check_mode
-
-- name: Enable and start dnsmasq
-  ansible.builtin.systemd:
-    name: dnsmasq
-    enabled: true
-    state: started
-  tags: [wifi, wifi-repeater, service]
-  when: not ansible_check_mode
-
-- name: Harden dnsmasq service (restart on failure)
-  ansible.builtin.blockinfile:
-    path: /etc/systemd/system/dnsmasq.service.d/override.conf
-    create: true
-    mode: '0644'
-    owner: root
-    group: root
-    block: |
-      [Service]
-      Restart=always
-      RestartSec=5
-  notify: Reload systemd
-  tags: [wifi, wifi-repeater, service, hardening]
-  when: not ansible_check_mode
-
-- name: Display WiFi repeater configuration
-  ansible.builtin.debug:
-    msg: |
-      WiFi Repeater Configuration:
-      - SSID: {{ wifi_repeater_ssid }}
-      - Channel: {{ wifi_channel }}
-      - Country: {{ wifi_country }}
-      - Repeater IP: {{ repeater_ip }}
-      - DHCP Range: {{ repeater_dhcp_start }} - {{ repeater_dhcp_end }}
-      - Uplink Interface: {{ wifi_interface_uplink }}
-      - Repeater Interface: {{ wifi_interface_repeater }}
-
-      Verify with:
-        sudo systemctl status hostapd
-        sudo systemctl status dnsmasq
-        sudo hostapd_cli status
-  when: debug_enabled | default(false) | bool
-  tags: [debug, wifi, wifi-repeater]
-
-# Handler to reload systemd if override files change
+- name: Debug output
+  ansible.builtin.import_tasks: steps/debug.yml

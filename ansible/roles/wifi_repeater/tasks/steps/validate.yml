@@ -1,0 +1,12 @@
+- name: Validate repeater interface configuration
+  ansible.builtin.assert:
+    that:
+      - wifi_interface_uplink != wifi_interface_repeater
+      - wifi_repeater_password != 'CHANGE_ME'
+      - (wifi_repeater_password | length) >= 12
+    fail_msg: >-
+      wifi_interface_uplink ({{ wifi_interface_uplink }}) and
+      wifi_interface_repeater ({{ wifi_interface_repeater }}) must be different.
+      Use two network interfaces (for example uplink=wlan0 and repeater=wlan1, or uplink=eth0 and repeater=wlan0).
+    success_msg: Repeater interface configuration looks valid.
+  tags: [wifi, wifi-repeater, validate]

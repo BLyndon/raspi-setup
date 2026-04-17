@@ -1,0 +1,48 @@
+- name: Configure IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: true
+    state: present
+  tags: [wifi, wifi-repeater, network]
+
+- name: Configure NAT masquerade for repeater clients
+  ansible.builtin.shell: |
+    iptables -t nat -C POSTROUTING -o {{ wifi_interface_uplink }} -j MASQUERADE || \
+    iptables -t nat -A POSTROUTING -o {{ wifi_interface_uplink }} -j MASQUERADE
+  changed_when: false
+  tags: [wifi, wifi-repeater, firewall]
+  when: not ansible_check_mode
+
+- name: Save iptables rules (persist NAT)
+  ansible.builtin.command: iptables-save
+  register: iptables_rules
+  changed_when: false
+  tags: [wifi, wifi-repeater, firewall, persistence]
+  when: not ansible_check_mode
+
+- name: Persist iptables rules to /etc/iptables/rules.v4
+  ansible.builtin.copy:
+    content: "{{ iptables_rules.stdout }}\n"
+    dest: /etc/iptables/rules.v4
+    owner: root
+    group: root
+    mode: '0600'
+  when: not ansible_check_mode
+  tags: [wifi, wifi-repeater, firewall, persistence]
+
+- name: Allow repeater -> uplink forwarding
+  ansible.builtin.shell: |
+    iptables -C FORWARD -i {{ wifi_interface_repeater }} -o {{ wifi_interface_uplink }} -j ACCEPT || \
+    iptables -A FORWARD -i {{ wifi_interface_repeater }} -o {{ wifi_interface_uplink }} -j ACCEPT
+  changed_when: false
+  tags: [wifi, wifi-repeater, firewall]
+  when: not ansible_check_mode
+
+- name: Allow established uplink -> repeater forwarding
+  ansible.builtin.shell: |
+    iptables -C FORWARD -i {{ wifi_interface_uplink }} -o {{ wifi_interface_repeater }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT || \
+    iptables -A FORWARD -i {{ wifi_interface_uplink }} -o {{ wifi_interface_repeater }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+  changed_when: false
+  tags: [wifi, wifi-repeater, firewall]
+  when: not ansible_check_mode

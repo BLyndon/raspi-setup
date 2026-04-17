@@ -1,0 +1,14 @@
+- name: Check if repeater interface exists
+  ansible.builtin.command: "ip link show {{ wifi_interface_repeater }}"
+  register: wifi_repeater_interface_exists
+  failed_when: false
+  changed_when: false
+  tags: [wifi, wifi-repeater, validate]
+
+- name: Create virtual repeater interface
+  ansible.builtin.command: "iw dev {{ wifi_interface_uplink }} interface add {{ wifi_interface_repeater }} type __ap"
+  changed_when: true
+  when:
+    - wifi_virtual_ap_enabled | default(false) | bool
+    - wifi_repeater_interface_exists.rc != 0
+  tags: [wifi, wifi-repeater, network]

@@ -1,0 +1,18 @@
+- name: Display WiFi repeater configuration
+  ansible.builtin.debug:
+    msg: |
+      WiFi Repeater Configuration:
+      - SSID: {{ wifi_repeater_ssid }}
+      - Channel: {{ wifi_channel }}
+      - Country: {{ wifi_country }}
+      - Repeater IP: {{ repeater_ip }}
+      - DHCP Range: {{ repeater_dhcp_start }} - {{ repeater_dhcp_end }}
+      - Uplink Interface: {{ wifi_interface_uplink }}
+      - Repeater Interface: {{ wifi_interface_repeater }}
+
+      Verify with:
+        sudo systemctl status hostapd
+        sudo systemctl status dnsmasq
+        sudo hostapd_cli status
+  when: debug_enabled | default(false) | bool
+  tags: [debug, wifi, wifi-repeater]

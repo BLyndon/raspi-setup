@@ -1,0 +1,37 @@
+- name: Check if WiFi interface is up
+  ansible.builtin.command: "ip -o link show {{ wifi_interface_repeater }}"
+  register: wifi_repeater_interface_status
+  failed_when: false
+  changed_when: false
+  when: debug_enabled | default(false) | bool
+  tags: [wifi, wifi-repeater, debug]
+
+- name: Configure repeater interface runtime IP
+  ansible.builtin.shell: |
+    ip link set {{ wifi_interface_repeater }} up
+    ip addr replace {{ repeater_ip }}/24 dev {{ wifi_interface_repeater }}
+  changed_when: false
+  tags: [wifi, wifi-repeater, network]
+  when: not ansible_check_mode
+
+- name: Disable WiFi power management (repeater)
+  ansible.builtin.shell: |
+    iw dev {{ wifi_interface_repeater }} set power_save off || true
+  changed_when: false
+  tags: [wifi, wifi-repeater, power, reliability]
+  when: not ansible_check_mode
+
+- name: Disable WiFi power management (uplink)
+  ansible.builtin.shell: |
+    iw dev {{ wifi_interface_uplink }} set power_save off || true
+  changed_when: false
+  tags: [wifi, wifi-repeater, power, reliability]
+  when: not ansible_check_mode
+
+- name: Ensure repeater interface is up (health check)
+  ansible.builtin.shell: |
+    set -o pipefail
+    ip link show {{ wifi_interface_repeater }} | grep 'state UP' || ip link set {{ wifi_interface_repeater }} up
+  changed_when: false
+  tags: [wifi, wifi-repeater, health, reliability]
+  when: not ansible_check_mode

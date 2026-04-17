@@ -1,0 +1,59 @@
+- name: Unmask hostapd service
+  ansible.builtin.systemd:
+    name: hostapd
+    masked: false
+  tags: [wifi, wifi-repeater, service]
+  when: not ansible_check_mode
+
+- name: Unmask dnsmasq service
+  ansible.builtin.systemd:
+    name: dnsmasq
+    masked: false
+  tags: [wifi, wifi-repeater, service]
+  when: not ansible_check_mode
+
+- name: Enable and start hostapd
+  ansible.builtin.systemd:
+    name: hostapd
+    enabled: true
+    state: started
+  tags: [wifi, wifi-repeater, service]
+  when: not ansible_check_mode
+
+- name: Harden hostapd service (restart on failure)
+  ansible.builtin.blockinfile:
+    path: /etc/systemd/system/hostapd.service.d/override.conf
+    create: true
+    mode: '0644'
+    owner: root
+    group: root
+    block: |
+      [Service]
+      Restart=always
+      RestartSec=5
+  notify: Reload systemd
+  tags: [wifi, wifi-repeater, service, hardening]
+  when: not ansible_check_mode
+
+- name: Enable and start dnsmasq
+  ansible.builtin.systemd:
+    name: dnsmasq
+    enabled: true
+    state: started
+  tags: [wifi, wifi-repeater, service]
+  when: not ansible_check_mode
+
+- name: Harden dnsmasq service (restart on failure)
+  ansible.builtin.blockinfile:
+    path: /etc/systemd/system/dnsmasq.service.d/override.conf
+    create: true
+    mode: '0644'
+    owner: root
+    group: root
+    block: |
+      [Service]
+      Restart=always
+      RestartSec=5
+  notify: Reload systemd
+  tags: [wifi, wifi-repeater, service, hardening]
+  when: not ansible_check_mode
