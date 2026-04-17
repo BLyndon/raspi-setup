@@ -1,11 +1,19 @@
 ---
 # WiFi Repeater role - Configure hostapd and dnsmasq for WiFi repeating
 # Prerequisites: network role (for network configuration)
+#
+# Hardened for reliability:
+# - Ensures services restart on failure
+# - Disables WiFi power management
+# - Ensures iptables rules persist
+# - Adds interface health check
 
 - name: Validate repeater interface configuration
   ansible.builtin.assert:
     that:
       - wifi_interface_uplink != wifi_interface_repeater
+      - wifi_repeater_password != 'CHANGE_ME'
+      - (wifi_repeater_password | length) >= 12
     fail_msg: >-
       wifi_interface_uplink ({{ wifi_interface_uplink }}) and
       wifi_interface_repeater ({{ wifi_interface_repeater }}) must be different.
@@ -23,6 +31,13 @@
       - rfkill
     state: present
   tags: [wifi, wifi-repeater, packages]
+
+- name: Install iptables-persistent for rule persistence
+  ansible.builtin.apt:
+    name:
+      - iptables-persistent
+    state: present
+  tags: [wifi, wifi-repeater, firewall, persistence]
 
 - name: Install nl80211 driver support
   ansible.builtin.apt:
@@ -94,6 +109,23 @@
   tags: [wifi, wifi-repeater, firewall]
   when: not ansible_check_mode
 
+- name: Save iptables rules (persist NAT)
+  ansible.builtin.command: iptables-save
+  register: iptables_rules
+  changed_when: false
+  tags: [wifi, wifi-repeater, firewall, persistence]
+  when: not ansible_check_mode
+
+- name: Persist iptables rules to /etc/iptables/rules.v4
+  ansible.builtin.copy:
+    content: "{{ iptables_rules.stdout }}\n"
+    dest: /etc/iptables/rules.v4
+    owner: root
+    group: root
+    mode: '0600'
+  when: not ansible_check_mode
+  tags: [wifi, wifi-repeater, firewall, persistence]
+
 - name: Allow repeater -> uplink forwarding
   ansible.builtin.shell: |
     iptables -C FORWARD -i {{ wifi_interface_repeater }} -o {{ wifi_interface_uplink }} -j ACCEPT || \
@@ -115,6 +147,7 @@
   register: wifi_repeater_interface_status
   failed_when: false
   changed_when: false
+  when: debug_enabled | default(false) | bool
   tags: [wifi, wifi-repeater, debug]
 
 - name: Configure repeater interface runtime IP
@@ -123,6 +156,28 @@
     ip addr replace {{ repeater_ip }}/24 dev {{ wifi_interface_repeater }}
   changed_when: false
   tags: [wifi, wifi-repeater, network]
+  when: not ansible_check_mode
+
+- name: Disable WiFi power management (repeater)
+  ansible.builtin.shell: |
+    iw dev {{ wifi_interface_repeater }} set power_save off || true
+  changed_when: false
+  tags: [wifi, wifi-repeater, power, reliability]
+  when: not ansible_check_mode
+
+- name: Disable WiFi power management (uplink)
+  ansible.builtin.shell: |
+    iw dev {{ wifi_interface_uplink }} set power_save off || true
+  changed_when: false
+  tags: [wifi, wifi-repeater, power, reliability]
+  when: not ansible_check_mode
+
+- name: Ensure repeater interface is up (health check)
+  ansible.builtin.shell: |
+    set -o pipefail
+    ip link show {{ wifi_interface_repeater }} | grep 'state UP' || ip link set {{ wifi_interface_repeater }} up
+  changed_when: false
+  tags: [wifi, wifi-repeater, health, reliability]
   when: not ansible_check_mode
 
 - name: Unmask hostapd service
@@ -147,12 +202,42 @@
   tags: [wifi, wifi-repeater, service]
   when: not ansible_check_mode
 
+- name: Harden hostapd service (restart on failure)
+  ansible.builtin.blockinfile:
+    path: /etc/systemd/system/hostapd.service.d/override.conf
+    create: true
+    mode: '0644'
+    owner: root
+    group: root
+    block: |
+      [Service]
+      Restart=always
+      RestartSec=5
+  notify: Reload systemd
+  tags: [wifi, wifi-repeater, service, hardening]
+  when: not ansible_check_mode
+
 - name: Enable and start dnsmasq
   ansible.builtin.systemd:
     name: dnsmasq
     enabled: true
     state: started
   tags: [wifi, wifi-repeater, service]
+  when: not ansible_check_mode
+
+- name: Harden dnsmasq service (restart on failure)
+  ansible.builtin.blockinfile:
+    path: /etc/systemd/system/dnsmasq.service.d/override.conf
+    create: true
+    mode: '0644'
+    owner: root
+    group: root
+    block: |
+      [Service]
+      Restart=always
+      RestartSec=5
+  notify: Reload systemd
+  tags: [wifi, wifi-repeater, service, hardening]
   when: not ansible_check_mode
 
 - name: Display WiFi repeater configuration
@@ -171,4 +256,7 @@
         sudo systemctl status hostapd
         sudo systemctl status dnsmasq
         sudo hostapd_cli status
+  when: debug_enabled | default(false) | bool
   tags: [debug, wifi, wifi-repeater]
+
+# Handler to reload systemd if override files change

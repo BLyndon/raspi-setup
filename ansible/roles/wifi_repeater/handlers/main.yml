@@ -1,4 +1,10 @@
----
+# Handler to reload systemd if override files change
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+  changed_when: false
+
 # WiFi Repeater role handlers
 
 - name: Restart hostapd
