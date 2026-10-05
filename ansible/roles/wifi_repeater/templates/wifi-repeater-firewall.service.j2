@@ -1,0 +1,12 @@
+# Managed by Ansible (wifi_repeater role)
+[Unit]
+Description=WiFi repeater NAT and forwarding rules
+After=network.target docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/wifi-repeater-firewall
+
+[Install]
+WantedBy=multi-user.target

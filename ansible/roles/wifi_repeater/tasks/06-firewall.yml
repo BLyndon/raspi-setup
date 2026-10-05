@@ -1,24 +1,31 @@
 ---
-- name: Configure NAT masquerade for repeater clients
-  ansible.builtin.shell: |
-    iptables -t nat -C POSTROUTING -o {{ wifi_interface_uplink }} -j MASQUERADE || \
-    iptables -t nat -A POSTROUTING -o {{ wifi_interface_uplink }} -j MASQUERADE
-  changed_when: false
+- name: Deploy repeater firewall script
+  ansible.builtin.template:
+    src: wifi-repeater-firewall.sh.j2
+    dest: /usr/local/sbin/wifi-repeater-firewall
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart wifi-repeater-firewall
   tags: [wifi, wifi-repeater, firewall]
-  when: not ansible_check_mode
 
-- name: Allow repeater -> uplink forwarding
-  ansible.builtin.shell: |
-    iptables -C FORWARD -i {{ wifi_interface_repeater }} -o {{ wifi_interface_uplink }} -j ACCEPT || \
-    iptables -A FORWARD -i {{ wifi_interface_repeater }} -o {{ wifi_interface_uplink }} -j ACCEPT
-  changed_when: false
+- name: Deploy repeater firewall unit
+  ansible.builtin.template:
+    src: wifi-repeater-firewall.service.j2
+    dest: /etc/systemd/system/wifi-repeater-firewall.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart wifi-repeater-firewall
   tags: [wifi, wifi-repeater, firewall]
-  when: not ansible_check_mode
 
-- name: Allow established uplink -> repeater forwarding
-  ansible.builtin.shell: |
-    iptables -C FORWARD -i {{ wifi_interface_uplink }} -o {{ wifi_interface_repeater }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT || \
-    iptables -A FORWARD -i {{ wifi_interface_uplink }} -o {{ wifi_interface_repeater }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-  changed_when: false
+- name: Enable and start repeater firewall unit
+  ansible.builtin.systemd:
+    name: wifi-repeater-firewall
+    enabled: true
+    state: started
+    daemon_reload: true
   tags: [wifi, wifi-repeater, firewall]
   when: not ansible_check_mode

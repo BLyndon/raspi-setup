@@ -7,6 +7,7 @@
     name: "{{ item }}"
   loop:
     - wifi-repeater-iface.service
+    - wifi-repeater-firewall.service
     - hostapd.service
     - dnsmasq.service
   register: wifi_repeater_verify_units
@@ -20,4 +21,25 @@
   register: wifi_repeater_verify_addr
   changed_when: false
   failed_when: ("inet " ~ repeater_ip ~ "/24") not in wifi_repeater_verify_addr.stdout
+  tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Check IPv4 forwarding is enabled
+  ansible.builtin.command: sysctl -n net.ipv4.ip_forward
+  register: wifi_repeater_verify_forward
+  changed_when: false
+  failed_when: wifi_repeater_verify_forward.stdout != '1'
+  tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Check NAT and forwarding rules
+  ansible.builtin.command: "iptables -t {{ item.table }} -C {{ item.rule }}"
+  loop:
+    - table: nat
+      rule: "POSTROUTING -s {{ wifi_repeater_subnet }} -o {{ wifi_interface_uplink }} -j MASQUERADE"
+    - table: filter
+      rule: "FORWARD -i {{ wifi_interface_repeater }} -o {{ wifi_interface_uplink }} -s {{ wifi_repeater_subnet }} -j ACCEPT"
+    - table: filter
+      rule: "FORWARD -i {{ wifi_interface_uplink }} -o {{ wifi_interface_repeater }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT"
+  loop_control:
+    label: "{{ item.table }}: {{ item.rule }}"
+  changed_when: false
   tags: [wifi, wifi-repeater, wifi-verify]

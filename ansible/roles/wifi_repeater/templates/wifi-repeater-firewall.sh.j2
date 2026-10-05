@@ -1,0 +1,23 @@
+#!/bin/bash
+# Managed by Ansible (wifi_repeater role)
+# Idempotently installs NAT/forwarding rules for repeater clients.
+# Only touches its own rules, so Docker's chains stay intact. Rules go to
+# the top of FORWARD so Docker's DROP policy does not affect them.
+set -u
+
+UPLINK="{{ wifi_interface_uplink }}"
+AP="{{ wifi_interface_repeater }}"
+SUBNET="{{ wifi_repeater_subnet }}"
+rc=0
+
+ensure() {
+    local table="$1"
+    shift
+    iptables -t "$table" -C "$@" 2>/dev/null || iptables -t "$table" -I "$@" || rc=1
+}
+
+ensure nat POSTROUTING -s "$SUBNET" -o "$UPLINK" -j MASQUERADE
+ensure filter FORWARD -i "$UPLINK" -o "$AP" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+ensure filter FORWARD -i "$AP" -o "$UPLINK" -s "$SUBNET" -j ACCEPT
+
+exit "$rc"
