@@ -30,6 +30,12 @@ if ! systemctl is-active --quiet hostapd.service; then
     restart hostapd.service "not active"
 elif ! timeout 5 hostapd_cli -i "$AP" ping 2>/dev/null | grep -q PONG; then
     restart hostapd.service "control interface not answering"
+else
+    # hostapd can stay alive with the AP disabled (e.g. after a radio reset)
+    ap_state=$(timeout 5 hostapd_cli -i "$AP" status 2>/dev/null | sed -n 's/^state=//p')
+    if [ "$ap_state" != ENABLED ]; then
+        restart hostapd.service "AP state ${ap_state:-unknown}"
+    fi
 fi
 
 {% if wifi_repeater_channel_follow_uplink | bool %}

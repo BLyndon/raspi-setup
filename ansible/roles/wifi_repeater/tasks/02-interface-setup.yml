@@ -21,6 +21,11 @@
       # Managed by Ansible (wifi_repeater role)
       [keyfile]
       unmanaged-devices=interface-name:{{ wifi_interface_repeater }}
+      {% if not wifi_repeater_uplink_power_save | bool %}
+
+      [connection]
+      wifi.powersave = 2
+      {% endif %}
     owner: root
     group: root
     mode: "0644"

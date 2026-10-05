@@ -3,6 +3,7 @@
   ansible.posix.sysctl:
     name: net.ipv4.ip_forward
     value: "1"
+    sysctl_file: /etc/sysctl.d/90-wifi-repeater.conf
     sysctl_set: true
     state: present
   tags: [wifi, wifi-repeater, network]

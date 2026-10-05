@@ -12,7 +12,13 @@ install -m 0600 "$SRC" "$DST" || exit 1
 
 {% if wifi_repeater_channel_follow_uplink | bool %}
 UPLINK="{{ wifi_interface_uplink }}"
-CHANNEL=$(iw dev "$UPLINK" info 2>/dev/null | awk '/channel/ && !c {print $2; c=1}')
+# At boot the uplink may still be associating; wait up to 60 s for it.
+CHANNEL=""
+for _ in $(seq 30); do
+    CHANNEL=$(iw dev "$UPLINK" info 2>/dev/null | awk '/channel/ && !c {print $2; c=1}')
+    [ -n "$CHANNEL" ] && break
+    sleep 2
+done
 if [ -n "$CHANNEL" ]; then
     if [ "$CHANNEL" -gt 14 ]; then HW_MODE=a; else HW_MODE=g; fi
     sed -i -e "s/^channel=.*/channel=$CHANNEL/" -e "s/^hw_mode=.*/hw_mode=$HW_MODE/" "$DST"
