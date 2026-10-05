@@ -43,3 +43,18 @@
     label: "{{ item.table }}: {{ item.rule }}"
   changed_when: false
   tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Check restart policy of repeater services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+  loop: [hostapd.service, dnsmasq.service]
+  register: wifi_repeater_verify_restart
+  failed_when: wifi_repeater_verify_restart.status.Restart != 'always'
+  tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Check dnsmasq starts after hostapd
+  ansible.builtin.systemd:
+    name: dnsmasq.service
+  register: wifi_repeater_verify_order
+  failed_when: "'hostapd.service' not in wifi_repeater_verify_order.status.After"
+  tags: [wifi, wifi-repeater, wifi-verify]

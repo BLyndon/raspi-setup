@@ -1,4 +1,28 @@
 ---
+- name: Create systemd drop-in directories for repeater services
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ item }}.service.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: [hostapd, dnsmasq]
+  tags: [wifi, wifi-repeater, service]
+
+- name: Deploy systemd drop-ins for repeater services
+  ansible.builtin.template:
+    src: "{{ item }}-override.conf.j2"
+    dest: "/etc/systemd/system/{{ item }}.service.d/wifi-repeater.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: [hostapd, dnsmasq]
+  notify:
+    - Reload systemd
+    - Restart hostapd
+    - Restart dnsmasq
+  tags: [wifi, wifi-repeater, service]
+
 - name: Unmask repeater services
   ansible.builtin.systemd:
     name: "{{ item }}"
