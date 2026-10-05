@@ -49,7 +49,7 @@
       - Repeater Interface: {{ wifi_interface_repeater }}
 
       Verify with:
-        sudo systemctl status hostapd
-        sudo systemctl status dnsmasq
-        sudo hostapd_cli status
+        sudo systemctl status wifi-repeater-iface hostapd dnsmasq
+        sudo hostapd_cli -i {{ wifi_interface_repeater }} status
+        journalctl -u wifi-repeater-watchdog --since today
   tags: [debug, wifi, wifi-repeater]

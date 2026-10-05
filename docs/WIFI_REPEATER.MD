@@ -247,3 +247,35 @@ Quick symptom map:
 - Interface: a network adapter name like `wlan0` or `wlan1`.
 - NAT: lets private clients share one upstream identity.
 - Upstream: the network that provides internet access.
+
+---
+
+## Operations
+
+### Boot sequence
+
+1. `wifi-repeater-iface.service` creates `ap0` on `wlan0`, sets `192.168.2.1/24`, disables uplink power save.
+2. `hostapd.service` renders `/run/wifi-repeater/hostapd.conf` with the uplink's current channel, then starts the AP.
+3. `dnsmasq.service` serves DHCP on `ap0`.
+4. `wifi-repeater-firewall.service` adds NAT/forwarding rules (only its own, Docker's rules are untouched).
+5. `wifi-repeater-watchdog.timer` checks every 2 minutes and repairs.
+
+The AP shares the radio with the uplink and must use the same channel. If the router changes channel, the watchdog restarts hostapd on the new one (short client drop). An uplink on a 5 GHz DFS channel cannot host an AP.
+
+### Debugging
+
+```bash
+systemctl status wifi-repeater-iface hostapd dnsmasq wifi-repeater-firewall
+journalctl -u wifi-repeater-watchdog --since today      # repairs done by the watchdog
+journalctl -u hostapd -u dnsmasq -n 50
+sudo hostapd_cli -i ap0 status
+sudo hostapd_cli -i ap0 list_sta                        # connected clients
+iw dev wlan0 info | grep channel; iw dev ap0 info | grep channel
+sudo iptables -t nat -S POSTROUTING; sudo iptables -S FORWARD
+```
+
+### Verify from the control machine
+
+```bash
+cd ansible && ansible-playbook site.yml -l raspi-01 --tags wifi-verify --skip-tags common
+```
