@@ -1,6 +1,6 @@
 # WiFi Repeater Role: Ready-to-Use Templates & Task Files
 
-> **Status (2026-10-05):** Implemented with deviations, see `docs/superpowers/plans/2026-10-05-wifi-repeater-hardening.md` (section "Abweichungen von den Analysen").
+> **Status (2026-10-05):** Implemented with deviations, see the plan `docs/superpowers/plans/2026-10-05-wifi-repeater-hardening.md` (section "Abweichungen von den Analysen") in git history: `git show f651a93:docs/superpowers/plans/2026-10-05-wifi-repeater-hardening.md`.
 
 ---
 
