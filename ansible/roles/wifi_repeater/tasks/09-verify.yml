@@ -58,3 +58,36 @@
   register: wifi_repeater_verify_order
   failed_when: "'hostapd.service' not in wifi_repeater_verify_order.status.After"
   tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Read uplink and AP channels
+  ansible.builtin.shell: |
+    set -o pipefail
+    iw dev {{ wifi_interface_uplink }} info | awk '/channel/ && !c {print $2; c=1}'
+    iw dev {{ wifi_interface_repeater }} info | awk '/channel/ && !c {print $2; c=1}'
+  args:
+    executable: /bin/bash
+  register: wifi_repeater_verify_channels
+  changed_when: false
+  when:
+    - wifi_repeater_channel_follow_uplink | bool
+    - wifi_virtual_ap_enabled | default(false) | bool
+  tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Check AP uses the uplink channel
+  ansible.builtin.assert:
+    that:
+      - wifi_repeater_verify_channels.stdout_lines | length == 2
+      - wifi_repeater_verify_channels.stdout_lines | unique | length == 1
+    fail_msg: "Channel mismatch (uplink, ap): {{ wifi_repeater_verify_channels.stdout_lines }}"
+    quiet: true
+  when:
+    - wifi_repeater_channel_follow_uplink | bool
+    - wifi_virtual_ap_enabled | default(false) | bool
+  tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Check hostapd runs from the runtime config
+  ansible.builtin.systemd:
+    name: hostapd.service
+  register: wifi_repeater_verify_execstart
+  failed_when: "'/run/wifi-repeater/hostapd.conf' not in wifi_repeater_verify_execstart.status.ExecStart"
+  tags: [wifi, wifi-repeater, wifi-verify]

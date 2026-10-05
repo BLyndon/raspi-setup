@@ -1,0 +1,23 @@
+#!/bin/bash
+# Managed by Ansible (wifi_repeater role)
+# Renders the runtime hostapd config. On single-radio setups the AP has to
+# use the uplink's channel, so the channel is taken from the live uplink.
+set -u
+
+SRC=/etc/hostapd/hostapd.conf
+DST=/run/wifi-repeater/hostapd.conf
+
+install -d -m 0700 "$(dirname "$DST")"
+install -m 0600 "$SRC" "$DST" || exit 1
+
+{% if wifi_repeater_channel_follow_uplink | bool %}
+UPLINK="{{ wifi_interface_uplink }}"
+CHANNEL=$(iw dev "$UPLINK" info 2>/dev/null | awk '/channel/ && !c {print $2; c=1}')
+if [ -n "$CHANNEL" ]; then
+    if [ "$CHANNEL" -gt 14 ]; then HW_MODE=a; else HW_MODE=g; fi
+    sed -i -e "s/^channel=.*/channel=$CHANNEL/" -e "s/^hw_mode=.*/hw_mode=$HW_MODE/" "$DST"
+    echo "using uplink channel $CHANNEL (hw_mode=$HW_MODE)"
+else
+    echo "uplink $UPLINK not associated, using configured channel"
+fi
+{% endif %}

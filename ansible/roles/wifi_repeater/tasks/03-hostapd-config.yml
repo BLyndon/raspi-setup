@@ -9,12 +9,12 @@
   notify: Restart hostapd
   tags: [wifi, wifi-repeater, config]
 
-- name: Configure hostapd daemon file
-  ansible.builtin.lineinfile:
-    path: /etc/default/hostapd
-    regexp: "^#?DAEMON_CONF"
-    line: 'DAEMON_CONF="/etc/hostapd/hostapd.conf"'
-    create: true
-    mode: "0644"
+- name: Deploy hostapd runtime config renderer
+  ansible.builtin.template:
+    src: wifi-repeater-hostapd-conf.sh.j2
+    dest: /usr/local/sbin/wifi-repeater-hostapd-conf
+    owner: root
+    group: root
+    mode: "0755"
   notify: Restart hostapd
   tags: [wifi, wifi-repeater, config]
