@@ -113,3 +113,19 @@
   register: wifi_repeater_verify_watchdog
   failed_when: wifi_repeater_verify_watchdog.status.Result != 'success'
   tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Read active hostapd tuning
+  ansible.builtin.command: grep -E '^(dtim_period|ap_max_inactivity)=' /run/wifi-repeater/hostapd.conf
+  register: wifi_repeater_verify_tuning
+  changed_when: false
+  failed_when: >-
+    ('dtim_period=' ~ wifi_repeater_dtim_period) not in wifi_repeater_verify_tuning.stdout or
+    ('ap_max_inactivity=' ~ wifi_repeater_ap_max_inactivity) not in wifi_repeater_verify_tuning.stdout
+  tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Check dnsmasq does not hijack DNS
+  ansible.builtin.command: grep -c '^address=/#/' /etc/dnsmasq.d/wifi-repeater.conf
+  register: wifi_repeater_verify_hijack
+  changed_when: false
+  failed_when: wifi_repeater_verify_hijack.stdout != '0'
+  tags: [wifi, wifi-repeater, wifi-verify]

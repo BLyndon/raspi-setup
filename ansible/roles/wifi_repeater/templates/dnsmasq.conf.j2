@@ -5,15 +5,12 @@
 interface={{ wifi_interface_repeater }}
 bind-dynamic
 listen-address={{ repeater_ip }}
+no-dhcp-interface={{ wifi_interface_uplink }}
 
 # DHCP Configuration
 dhcp-range={{ repeater_dhcp_start }},{{ repeater_dhcp_end }},12h
 dhcp-option=option:router,{{ repeater_ip }}
-dhcp-option=option:dns-server,8.8.8.8,8.8.4.4
-
-# DNS Configuration
-address=/#/{{ repeater_ip }}
-no-dhcp-interface={{ wifi_interface_uplink }}
+dhcp-option=option:dns-server,{{ wifi_repeater_dns_servers | join(',') }}
 
 # Logging
 # Keep logging in journald/syslog defaults for compatibility.
