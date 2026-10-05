@@ -26,6 +26,9 @@
 - name: Import service tasks
   ansible.builtin.import_tasks: 07-services.yml
 
+- name: Import monitoring tasks
+  ansible.builtin.import_tasks: 08-monitoring.yml
+
 - name: Apply pending changes before verification
   ansible.builtin.meta: flush_handlers
 

@@ -1,0 +1,29 @@
+---
+- name: Deploy repeater watchdog script
+  ansible.builtin.template:
+    src: wifi-repeater-watchdog.sh.j2
+    dest: /usr/local/sbin/wifi-repeater-watchdog
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [wifi, wifi-repeater, monitoring]
+
+- name: Deploy repeater watchdog units
+  ansible.builtin.template:
+    src: "wifi-repeater-watchdog.{{ item }}.j2"
+    dest: "/etc/systemd/system/wifi-repeater-watchdog.{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: [service, timer]
+  notify: Reload systemd
+  tags: [wifi, wifi-repeater, monitoring]
+
+- name: Enable and start repeater watchdog timer
+  ansible.builtin.systemd:
+    name: wifi-repeater-watchdog.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: [wifi, wifi-repeater, monitoring]
+  when: not ansible_check_mode

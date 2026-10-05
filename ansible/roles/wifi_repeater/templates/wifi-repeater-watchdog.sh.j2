@@ -1,0 +1,51 @@
+#!/bin/bash
+# Managed by Ansible (wifi_repeater role)
+# Periodic self-healing for the WiFi repeater. Silent when healthy;
+# repairs are logged to the journal: journalctl -u wifi-repeater-watchdog
+set -u
+
+{% if wifi_repeater_channel_follow_uplink | bool %}
+UPLINK="{{ wifi_interface_uplink }}"
+{% endif %}
+AP="{{ wifi_interface_repeater }}"
+AP_IP="{{ repeater_ip }}"
+
+restart() {
+    echo "restarting $1: $2"
+    systemctl reset-failed "$1" 2>/dev/null
+    systemctl restart "$1"
+}
+
+channel_of() {
+    iw dev "$1" info 2>/dev/null | awk '/channel/ && !c {print $2; c=1}'
+}
+
+# Interface gone or address lost. Restarting the unit also restarts
+# hostapd through its Requires= dependency.
+if ! ip -4 addr show dev "$AP" 2>/dev/null | grep -q "inet $AP_IP/"; then
+    restart wifi-repeater-iface.service "$AP missing or without $AP_IP"
+fi
+
+if ! systemctl is-active --quiet hostapd.service; then
+    restart hostapd.service "not active"
+elif ! timeout 5 hostapd_cli -i "$AP" ping 2>/dev/null | grep -q PONG; then
+    restart hostapd.service "control interface not answering"
+fi
+
+{% if wifi_repeater_channel_follow_uplink | bool %}
+uplink_channel=$(channel_of "$UPLINK")
+ap_channel=$(channel_of "$AP")
+if [ -n "$uplink_channel" ] && [ -n "$ap_channel" ] && [ "$uplink_channel" != "$ap_channel" ]; then
+    restart hostapd.service "channel mismatch (uplink $uplink_channel, ap $ap_channel)"
+fi
+{% endif %}
+
+if ! systemctl is-active --quiet dnsmasq.service; then
+    restart dnsmasq.service "not active"
+elif ! ss -Hulpn 'sport = :67' 2>/dev/null | grep -q dnsmasq; then
+    restart dnsmasq.service "not serving DHCP"
+fi
+
+/usr/local/sbin/wifi-repeater-firewall || echo "could not apply firewall rules"
+
+exit 0

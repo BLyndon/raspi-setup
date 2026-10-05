@@ -1,0 +1,10 @@
+# Managed by Ansible (wifi_repeater role)
+[Unit]
+Description=Run WiFi repeater health check periodically
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec={{ wifi_repeater_watchdog_interval }}
+
+[Install]
+WantedBy=timers.target

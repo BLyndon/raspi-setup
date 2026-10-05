@@ -1,0 +1,8 @@
+# Managed by Ansible (wifi_repeater role)
+[Unit]
+Description=WiFi repeater health check
+After=wifi-repeater-iface.service hostapd.service dnsmasq.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wifi-repeater-watchdog

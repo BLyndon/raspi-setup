@@ -10,6 +10,7 @@
     - wifi-repeater-firewall.service
     - hostapd.service
     - dnsmasq.service
+    - wifi-repeater-watchdog.timer
   register: wifi_repeater_verify_units
   failed_when: >-
     wifi_repeater_verify_units.status.UnitFileState != 'enabled' or
@@ -90,4 +91,25 @@
     name: hostapd.service
   register: wifi_repeater_verify_execstart
   failed_when: "'/run/wifi-repeater/hostapd.conf' not in wifi_repeater_verify_execstart.status.ExecStart"
+  tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Check hostapd control interface answers
+  ansible.builtin.command: "hostapd_cli -i {{ wifi_interface_repeater }} ping"
+  register: wifi_repeater_verify_ping
+  changed_when: false
+  failed_when: "'PONG' not in wifi_repeater_verify_ping.stdout"
+  tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Run watchdog once
+  ansible.builtin.systemd:
+    name: wifi-repeater-watchdog.service
+    state: started
+  changed_when: false
+  tags: [wifi, wifi-repeater, wifi-verify]
+
+- name: Check watchdog finished successfully
+  ansible.builtin.systemd:
+    name: wifi-repeater-watchdog.service
+  register: wifi_repeater_verify_watchdog
+  failed_when: wifi_repeater_verify_watchdog.status.Result != 'success'
   tags: [wifi, wifi-repeater, wifi-verify]

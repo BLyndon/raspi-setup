@@ -3,6 +3,8 @@
 
 interface={{ wifi_interface_repeater }}
 driver=nl80211
+ctrl_interface=/run/hostapd
+ctrl_interface_group=0
 
 # WiFi Network Settings
 ssid={{ wifi_repeater_ssid }}
