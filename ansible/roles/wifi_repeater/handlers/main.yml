@@ -1,5 +1,26 @@
 ---
-# WiFi Repeater role handlers
+# WiFi Repeater role handlers (executed in definition order)
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Reload NetworkManager config
+  ansible.builtin.command: nmcli general reload conf
+  changed_when: true
+  when: not ansible_check_mode
+
+- name: Restart wifi-repeater-iface
+  ansible.builtin.systemd:
+    name: wifi-repeater-iface
+    state: restarted
+  when: not ansible_check_mode
+
+- name: Restart wifi-repeater-firewall
+  ansible.builtin.systemd:
+    name: wifi-repeater-firewall
+    state: restarted
+  when: not ansible_check_mode
 
 - name: Restart hostapd
   ansible.builtin.systemd:

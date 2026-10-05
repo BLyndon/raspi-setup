@@ -1,0 +1,22 @@
+---
+# WiFi Repeater role defaults (override in group_vars/host_vars)
+
+# Repeater subnet, derived from repeater_ip (/24)
+wifi_repeater_subnet: "{{ repeater_ip | regex_replace('\\.[0-9]+$', '.0') }}/24"
+
+# Disable power saving on the uplink (brcmfmac drops connections with it on)
+wifi_repeater_uplink_power_save: false
+
+# Single-radio setups: AP must use the uplink's current channel
+wifi_repeater_channel_follow_uplink: true
+
+# How often the self-healing watchdog runs
+wifi_repeater_watchdog_interval: "2min"
+
+# hostapd client stability tuning
+wifi_repeater_dtim_period: 3
+wifi_repeater_beacon_int: 100
+wifi_repeater_ap_max_inactivity: 300
+
+# DNS servers handed out to repeater clients via DHCP
+wifi_repeater_dns_servers: ["8.8.8.8", "8.8.4.4"]

@@ -1,0 +1,23 @@
+#!/bin/bash
+# Managed by Ansible (wifi_repeater role)
+# Creates the AP interface and assigns its static address. Runs at boot
+# via wifi-repeater-iface.service; safe to run repeatedly.
+set -u
+
+{% if wifi_virtual_ap_enabled | default(false) | bool or not wifi_repeater_uplink_power_save | bool %}
+UPLINK="{{ wifi_interface_uplink }}"
+{% endif %}
+AP="{{ wifi_interface_repeater }}"
+ADDR="{{ repeater_ip }}/24"
+
+{% if wifi_virtual_ap_enabled | default(false) | bool %}
+if ! ip link show "$AP" >/dev/null 2>&1; then
+    iw dev "$UPLINK" interface add "$AP" type __ap || exit 1
+fi
+{% endif %}
+{% if not wifi_repeater_uplink_power_save | bool %}
+iw dev "$UPLINK" set power_save off 2>/dev/null || true
+{% endif %}
+
+ip link set "$AP" up || exit 1
+ip addr replace "$ADDR" dev "$AP" || exit 1

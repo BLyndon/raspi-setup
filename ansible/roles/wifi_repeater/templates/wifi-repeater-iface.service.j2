@@ -1,0 +1,14 @@
+# Managed by Ansible (wifi_repeater role)
+[Unit]
+Description=WiFi repeater AP interface ({{ wifi_interface_repeater }})
+Wants=sys-subsystem-net-devices-{{ wifi_interface_uplink }}.device
+After=sys-subsystem-net-devices-{{ wifi_interface_uplink }}.device NetworkManager.service
+Before=hostapd.service dnsmasq.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/wifi-repeater-iface
+
+[Install]
+WantedBy=multi-user.target

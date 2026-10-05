@@ -14,25 +14,46 @@
     quiet: true
   tags: [wifi, wifi-repeater, validate]
 
-- name: Check if repeater interface exists
-  ansible.builtin.command: "ip link show {{ wifi_interface_repeater }}"
-  register: wifi_repeater_interface_exists
-  failed_when: false
-  changed_when: false
-  tags: [wifi, wifi-repeater, validate]
-
-- name: Create virtual repeater interface
-  ansible.builtin.command: "iw dev {{ wifi_interface_uplink }} interface add {{ wifi_interface_repeater }} type __ap"
-  changed_when: true
-  when:
-    - wifi_virtual_ap_enabled | default(false) | bool
-    - wifi_repeater_interface_exists.rc != 0
+- name: Keep NetworkManager away from the AP interface
+  ansible.builtin.copy:
+    dest: /etc/NetworkManager/conf.d/99-wifi-repeater.conf
+    content: |
+      # Managed by Ansible (wifi_repeater role)
+      [keyfile]
+      unmanaged-devices=interface-name:{{ wifi_interface_repeater }}
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload NetworkManager config
   tags: [wifi, wifi-repeater, network]
 
-- name: Configure repeater interface runtime IP
-  ansible.builtin.shell: |
-    ip link set {{ wifi_interface_repeater }} up
-    ip addr replace {{ repeater_ip }}/24 dev {{ wifi_interface_repeater }}
-  changed_when: false
+- name: Deploy repeater interface script
+  ansible.builtin.template:
+    src: wifi-repeater-iface.sh.j2
+    dest: /usr/local/sbin/wifi-repeater-iface
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart wifi-repeater-iface
+  tags: [wifi, wifi-repeater, network]
+
+- name: Deploy repeater interface unit
+  ansible.builtin.template:
+    src: wifi-repeater-iface.service.j2
+    dest: /etc/systemd/system/wifi-repeater-iface.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart wifi-repeater-iface
+  tags: [wifi, wifi-repeater, network]
+
+- name: Enable and start repeater interface unit
+  ansible.builtin.systemd:
+    name: wifi-repeater-iface
+    enabled: true
+    state: started
+    daemon_reload: true
   tags: [wifi, wifi-repeater, network]
   when: not ansible_check_mode
