@@ -1,0 +1,11 @@
+# Managed by Ansible (duckdns role)
+[Unit]
+Description=Update DuckDNS record
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+LoadCredential=duckdns:/etc/duckdns/curl.conf
+ExecStart=/usr/local/sbin/duckdns-update

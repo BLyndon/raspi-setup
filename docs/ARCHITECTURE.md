@@ -29,7 +29,7 @@ Raspberry Pi
 The current playbook flow is:
 
 ```text
-common -> network -> wifi_repeater -> docker
+common -> network -> wifi_repeater -> duckdns -> docker
 ```
 
 Role purpose:
@@ -37,6 +37,7 @@ Role purpose:
 - common: base system tasks (packages, timezone, hostname, SSH settings)
 - network: interface and network baseline for repeater mode
 - wifi_repeater: hostapd, dnsmasq, forwarding, NAT when enabled
+- duckdns: systemd timer pushing the public IPv4 to DuckDNS when enabled
 - docker: Docker engine and Docker Compose binary installation
 
 Reference: ansible/site.yml.

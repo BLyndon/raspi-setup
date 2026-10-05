@@ -48,6 +48,10 @@ repeater_ip: "192.168.2.1"
 repeater_dhcp_start: "192.168.2.100"
 repeater_dhcp_end: "192.168.2.150"
 
+# Dynamic DNS (DuckDNS)
+# Set duckdns_domains and duckdns_token in pi_nodes.local.yml
+duckdns_enabled: false
+
 # Docker Configuration
 docker_enabled: true
 docker_version: "24.0"

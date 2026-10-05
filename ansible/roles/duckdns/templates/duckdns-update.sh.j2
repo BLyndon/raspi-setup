@@ -1,0 +1,13 @@
+#!/bin/bash
+# Managed by Ansible (duckdns role)
+# Pushes the current public IPv4 to DuckDNS. The URL including the token is
+# passed in by systemd as a credential: journalctl -u duckdns-update
+set -u
+
+# -4: DuckDNS only auto-detects IPv4, so the request must not go out via IPv6
+response=$(curl -4 -fsS --max-time 30 -K "$CREDENTIALS_DIRECTORY/duckdns") || exit 1
+
+if [ "$response" != OK ]; then
+    echo "DuckDNS rejected the update (response: ${response:-empty}), check domains and token"
+    exit 1
+fi

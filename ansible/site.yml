@@ -46,6 +46,11 @@
       tags: [wifi, wifi-repeater]
       when: wifi_repeater_enabled | default(false) | bool
 
+    # Dynamic DNS via DuckDNS
+    - role: duckdns
+      tags: [duckdns]
+      when: duckdns_enabled | default(false) | bool
+
     # Docker installation
     - role: docker
       tags: [docker, containers]

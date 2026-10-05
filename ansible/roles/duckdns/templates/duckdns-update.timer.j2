@@ -1,0 +1,10 @@
+# Managed by Ansible (duckdns role)
+[Unit]
+Description=Update DuckDNS record periodically
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec={{ duckdns_interval }}
+
+[Install]
+WantedBy=timers.target

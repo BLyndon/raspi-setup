@@ -1,0 +1,9 @@
+---
+# DuckDNS role defaults (set domains and token in group_vars/pi_nodes.local.yml)
+
+# Comma-separated subdomains without .duckdns.org, e.g. "mypi"
+duckdns_domains: ""
+duckdns_token: ""
+
+# How often the public IPv4 is pushed to DuckDNS
+duckdns_interval: "5min"

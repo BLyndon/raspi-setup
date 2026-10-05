@@ -1,0 +1,86 @@
+---
+# DuckDNS role - Keep <domain>.duckdns.org pointed at the current public IPv4
+
+- name: Validate DuckDNS configuration
+  ansible.builtin.assert:
+    that:
+      - duckdns_domains | length > 0
+      - duckdns_token | length > 0
+    fail_msg: duckdns_domains and duckdns_token must be set (group_vars/pi_nodes.local.yml)
+    quiet: true
+  tags: [duckdns, validate]
+
+- name: Create DuckDNS config directory
+  ansible.builtin.file:
+    path: /etc/duckdns
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags: [duckdns]
+
+# The token lives in a curl config file so it never shows up in the process list
+- name: Deploy DuckDNS update URL
+  ansible.builtin.template:
+    src: curl.conf.j2
+    dest: /etc/duckdns/curl.conf
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  diff: false
+  tags: [duckdns]
+
+- name: Deploy DuckDNS update script
+  ansible.builtin.template:
+    src: duckdns-update.sh.j2
+    dest: /usr/local/sbin/duckdns-update
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [duckdns]
+
+- name: Deploy DuckDNS update units
+  ansible.builtin.template:
+    src: "duckdns-update.{{ item }}.j2"
+    dest: "/etc/systemd/system/duckdns-update.{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: [service, timer]
+  notify: Reload systemd
+  tags: [duckdns]
+
+- name: Apply pending systemd changes
+  ansible.builtin.meta: flush_handlers
+  tags: [duckdns]
+
+- name: Enable and start DuckDNS update timer
+  ansible.builtin.systemd:
+    name: duckdns-update.timer
+    enabled: true
+    state: started
+  when: not ansible_check_mode
+  tags: [duckdns]
+
+# Fails the play when DuckDNS rejects the update (wrong domain or token)
+- name: Run DuckDNS update once
+  ansible.builtin.systemd:
+    name: duckdns-update.service
+    state: restarted
+  changed_when: false
+  when: not ansible_check_mode
+  tags: [duckdns, verify]
+
+- name: Display DuckDNS configuration
+  ansible.builtin.debug:
+    msg: |
+      DuckDNS Configuration:
+      - Domains: {{ duckdns_domains }}
+      - Interval: {{ duckdns_interval }}
+
+      Verify with:
+        systemctl list-timers duckdns-update.timer
+        journalctl -u duckdns-update --since today
+        dig +short {{ duckdns_domains.split(',') | first }}.duckdns.org
+  tags: [debug, duckdns]

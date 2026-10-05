@@ -20,6 +20,7 @@ The playbook (`ansible/site.yml`) applies these roles in order. Each runs only w
 | Base system | `common` | apt updates, hostname, timezone, locale, SSH hardening, user SSH keys | always | `common` |
 | Network | `network` | DHCP/static interface config and connectivity checks; prerequisite for the WiFi repeater | host is in the `wifi_repeater_nodes` group | `network`, `wifi` |
 | WiFi repeater | `wifi_repeater` | `hostapd` + `dnsmasq` access point, IPv4 forwarding, NAT and firewall rules | `wifi_repeater_enabled: true` | `wifi`, `wifi-repeater` |
+| Dynamic DNS | `duckdns` | systemd timer that keeps `<name>.duckdns.org` pointed at the public IPv4 | `duckdns_enabled: true` | `duckdns` |
 | Docker | `docker` | Docker Engine, CLI, containerd and Docker Compose | `docker_enabled: true` (default) | `docker`, `containers` |
 
 Run a single module with `ansible-playbook ansible/site.yml -i ansible/hosts.ini --tags <tag>`.
@@ -44,6 +45,7 @@ The README is intentionally short. Detailed setup and design notes live in the d
 - [Deployment guide](docs/DEPLOYMENT.md)
 - [Architecture overview](docs/ARCHITECTURE.md)
 - [WiFi repeater details](docs/WIFI_REPEATER.MD)
+- [Public access via DuckDNS and HTTPS](docs/PUBLIC_ACCESS.md)
 
 ## Repository overview
 
