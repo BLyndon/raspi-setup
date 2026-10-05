@@ -1,0 +1,21 @@
+---
+- name: Install WiFi repeater dependencies
+  ansible.builtin.apt:
+    name:
+      - hostapd
+      - dnsmasq
+      - iptables
+      - bridge-utils
+      - wavemon
+      - rfkill
+    state: present
+  tags: [wifi, wifi-repeater, packages]
+
+- name: Install nl80211 driver support
+  ansible.builtin.apt:
+    name:
+      - iw
+      - wireless-tools
+      - wpasupplicant
+    state: present
+  tags: [wifi, wifi-repeater, packages]

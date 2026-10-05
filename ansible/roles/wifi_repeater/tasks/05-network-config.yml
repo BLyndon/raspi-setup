@@ -1,0 +1,8 @@
+---
+- name: Configure IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: true
+    state: present
+  tags: [wifi, wifi-repeater, network]

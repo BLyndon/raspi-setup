@@ -1,0 +1,24 @@
+---
+- name: Configure NAT masquerade for repeater clients
+  ansible.builtin.shell: |
+    iptables -t nat -C POSTROUTING -o {{ wifi_interface_uplink }} -j MASQUERADE || \
+    iptables -t nat -A POSTROUTING -o {{ wifi_interface_uplink }} -j MASQUERADE
+  changed_when: false
+  tags: [wifi, wifi-repeater, firewall]
+  when: not ansible_check_mode
+
+- name: Allow repeater -> uplink forwarding
+  ansible.builtin.shell: |
+    iptables -C FORWARD -i {{ wifi_interface_repeater }} -o {{ wifi_interface_uplink }} -j ACCEPT || \
+    iptables -A FORWARD -i {{ wifi_interface_repeater }} -o {{ wifi_interface_uplink }} -j ACCEPT
+  changed_when: false
+  tags: [wifi, wifi-repeater, firewall]
+  when: not ansible_check_mode
+
+- name: Allow established uplink -> repeater forwarding
+  ansible.builtin.shell: |
+    iptables -C FORWARD -i {{ wifi_interface_uplink }} -o {{ wifi_interface_repeater }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT || \
+    iptables -A FORWARD -i {{ wifi_interface_uplink }} -o {{ wifi_interface_repeater }} -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+  changed_when: false
+  tags: [wifi, wifi-repeater, firewall]
+  when: not ansible_check_mode

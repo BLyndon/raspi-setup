@@ -11,6 +11,19 @@ This repository uses Ansible for host setup and Terraform for optional service d
 - Docker installation and base system configuration
 - optional Terraform-based app deployment on top of the host setup
 
+## Modules
+
+The playbook (`ansible/site.yml`) applies these roles in order. Each runs only when its condition is met, so a node gets just the pieces it needs.
+
+| Module | Role | What it does | Deployed when | Tags |
+| --- | --- | --- | --- | --- |
+| Base system | `common` | apt updates, hostname, timezone, locale, SSH hardening, user SSH keys | always | `common` |
+| Network | `network` | DHCP/static interface config and connectivity checks; prerequisite for the WiFi repeater | host is in the `wifi_repeater_nodes` group | `network`, `wifi` |
+| WiFi repeater | `wifi_repeater` | `hostapd` + `dnsmasq` access point, IPv4 forwarding, NAT and firewall rules | `wifi_repeater_enabled: true` | `wifi`, `wifi-repeater` |
+| Docker | `docker` | Docker Engine, CLI, containerd and Docker Compose | `docker_enabled: true` (default) | `docker`, `containers` |
+
+Run a single module with `ansible-playbook ansible/site.yml -i ansible/hosts.ini --tags <tag>`.
+
 ## Who this is for
 
 Use this repo if you want to bootstrap or rebuild a Pi without redoing the same machine setup by hand each time.

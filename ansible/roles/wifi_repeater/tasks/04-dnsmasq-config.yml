@@ -1,0 +1,10 @@
+---
+- name: Create dnsmasq configuration for WiFi repeater
+  ansible.builtin.template:
+    src: dnsmasq.conf.j2
+    dest: /etc/dnsmasq.d/wifi-repeater.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart dnsmasq
+  tags: [wifi, wifi-repeater, config]

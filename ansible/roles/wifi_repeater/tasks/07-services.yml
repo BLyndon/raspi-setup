@@ -1,0 +1,17 @@
+---
+- name: Unmask repeater services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    masked: false
+  loop: [hostapd, dnsmasq]
+  tags: [wifi, wifi-repeater, service]
+  when: not ansible_check_mode
+
+- name: Enable and start repeater services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: [hostapd, dnsmasq]
+  tags: [wifi, wifi-repeater, service]
+  when: not ansible_check_mode

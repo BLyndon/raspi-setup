@@ -1,0 +1,15 @@
+---
+# Post-deployment checks for the WiFi repeater.
+# Run only these with: ansible-playbook site.yml -l raspi-01 --tags wifi-verify --skip-tags common
+
+- name: Check repeater units are enabled and active
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+  loop:
+    - hostapd.service
+    - dnsmasq.service
+  register: wifi_repeater_verify_units
+  failed_when: >-
+    wifi_repeater_verify_units.status.UnitFileState != 'enabled' or
+    wifi_repeater_verify_units.status.ActiveState != 'active'
+  tags: [wifi, wifi-repeater, wifi-verify]

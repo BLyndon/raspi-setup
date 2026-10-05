@@ -1,0 +1,38 @@
+---
+- name: Read WiFi hardware capabilities
+  ansible.builtin.command: iw list
+  register: wifi_repeater_iw_list
+  changed_when: false
+  check_mode: false
+  tags: [wifi, wifi-repeater, validate]
+
+- name: Verify the WiFi hardware supports AP mode
+  ansible.builtin.assert:
+    that:
+      - "'* AP' in wifi_repeater_iw_list.stdout"
+    fail_msg: "No AP mode in 'iw list' output. This adapter cannot run an access point."
+    quiet: true
+  tags: [wifi, wifi-repeater, validate]
+
+- name: Check if repeater interface exists
+  ansible.builtin.command: "ip link show {{ wifi_interface_repeater }}"
+  register: wifi_repeater_interface_exists
+  failed_when: false
+  changed_when: false
+  tags: [wifi, wifi-repeater, validate]
+
+- name: Create virtual repeater interface
+  ansible.builtin.command: "iw dev {{ wifi_interface_uplink }} interface add {{ wifi_interface_repeater }} type __ap"
+  changed_when: true
+  when:
+    - wifi_virtual_ap_enabled | default(false) | bool
+    - wifi_repeater_interface_exists.rc != 0
+  tags: [wifi, wifi-repeater, network]
+
+- name: Configure repeater interface runtime IP
+  ansible.builtin.shell: |
+    ip link set {{ wifi_interface_repeater }} up
+    ip addr replace {{ repeater_ip }}/24 dev {{ wifi_interface_repeater }}
+  changed_when: false
+  tags: [wifi, wifi-repeater, network]
+  when: not ansible_check_mode

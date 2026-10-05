@@ -1,0 +1,20 @@
+---
+- name: Validate repeater configuration
+  ansible.builtin.assert:
+    that:
+      - wifi_interface_uplink | length > 0
+      - wifi_interface_repeater | length > 0
+      - wifi_interface_uplink != wifi_interface_repeater
+      - wifi_repeater_ssid | length > 0
+      - wifi_repeater_password | length >= 8
+      - wifi_repeater_password | length <= 63
+      - wifi_repeater_password != 'CHANGE_ME'
+      - repeater_ip is match('^([0-9]{1,3}\.){3}[0-9]{1,3}$')
+    fail_msg: |
+      WiFi repeater configuration is invalid:
+      - uplink ({{ wifi_interface_uplink }}) and repeater ({{ wifi_interface_repeater }}) must be set and differ
+      - wifi_repeater_ssid must be set
+      - wifi_repeater_password must be 8-63 characters and not the CHANGE_ME placeholder
+      - repeater_ip must be an IPv4 address
+    quiet: true
+  tags: [wifi, wifi-repeater, validate]
